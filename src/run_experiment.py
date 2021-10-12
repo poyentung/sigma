@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
+import os
 import random
+import datetime
 import timeit
-
-import sys
-sys.path.append('../')
-from load_dataset import utils
+import numpy as np
+from . import utils
 
 import torch
 import torch.nn as nn
@@ -29,7 +28,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-class DoExperiment(object):
+class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
                  autoencoder:torch, chosen_dataset:np,
                  num_epochs:int, patience:int, batch_size:int,
@@ -94,7 +93,7 @@ class DoExperiment(object):
         self.num_epochs = num_epochs
         self.save_model_every_epoch=False
         
-        
+
         #num_workers is number of threads to use for data loading
         if debug:
             self.num_workers = 0
@@ -136,7 +135,14 @@ class DoExperiment(object):
         self.best_valid_epoch = 0
         self.min_test_loss = np.inf
         
-        
+        #Set model and optimozer
+        self.model = self.autoencoder(in_channel=self.chosen_dataset[0].shape[-1]).to(self.device)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), 
+                                          lr=self.learning_rate, 
+                                          weight_decay=self.weight_decay)
+        print(f'Running with optimizer lr={str(self.learning_rate)}',
+              f'and weight_decay={str(self.weight_decay)}')
+
         #Run everything
         self.run_model()
     
@@ -161,18 +167,8 @@ class DoExperiment(object):
             os.mkdir(self.backup_dir)
         
         
-    def run_model(self):
-        self.model = self.autoencoder(in_channel=self.chosen_dataset[0].shape[-1]).to(self.device)
-        
-        print('Running with optimizer lr='+str(self.learning_rate)+
-              ' and weight_decay='+str(self.weight_decay))
-        
-        self.optimizer = torch.optim.Adam(self.model.parameters(), 
-                                          lr=self.learning_rate, 
-                                          weight_decay=self.weight_decay)
-                
+    def run_model(self):                
         start_epoch = 0
-        
         if self.task in ['train_eval', 'train_all']:
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
                                           shuffle=True)
