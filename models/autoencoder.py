@@ -9,38 +9,41 @@ def weights_init(m):
         m.bias.data.fill_(0)
     
 class AutoEncoder(nn.Module):
-    def __init__(self, in_channel):
+    def __init__(self, in_channel:int, 
+                 hidden_layer_sizes=(512,256,128)):
+        
         super(AutoEncoder, self).__init__()
         self.in_channel = in_channel
-
-        self.encoder = nn.Sequential(nn.Linear(self.in_channel,512),
-                                     nn.LayerNorm(512),
+        self.hls = hidden_layer_sizes
+        
+        self.encoder = nn.Sequential(nn.Linear(self.in_channel,self.hls[0]),
+                                     nn.LayerNorm(self.hls[0]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(512,256),
-                                     nn.LayerNorm(256),
+                                     nn.Linear(self.hls[0],self.hls[1]),
+                                     nn.LayerNorm(self.hls[1]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(256,128),
-                                     nn.LayerNorm(128),
+                                     nn.Linear(self.hls[1],self.hls[2]),
+                                     nn.LayerNorm(self.hls[2]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(128,2)
+                                     nn.Linear(self.hls[2],2)
                                     )
 
-        self.decoder = nn.Sequential(nn.Linear(2,128),
-                                     nn.LayerNorm(128),
+        self.decoder = nn.Sequential(nn.Linear(2,self.hls[2]),
+                                     nn.LayerNorm(self.hls[2]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(128,256),
-                                     nn.LayerNorm(256),
+                                     nn.Linear(self.hls[2],self.hls[1]),
+                                     nn.LayerNorm(self.hls[1]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(256,512),
-                                     nn.LayerNorm(512),
+                                     nn.Linear(self.hls[1],self.hls[0]),
+                                     nn.LayerNorm(self.hls[0]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(512,self.in_channel),
+                                     nn.Linear(self.hls[0],self.in_channel),
                                     )
         
         self.apply(weights_init)

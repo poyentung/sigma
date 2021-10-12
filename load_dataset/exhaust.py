@@ -49,7 +49,7 @@ class SEMDataset(object):
 ######################
   
 def remove_fist_peak(edx:EDSSEMSpectrum, range_idx=58) -> EDSSEMSpectrum:
-    print(f'Remove the fisrt peak by setting the first {range_idx} as zero')
+    print(f'Removing the fisrt peak by setting the first {range_idx} as zero')
     edx_cleaned = edx
     for i in range(range_idx):
         edx_cleaned.isig[i] = 0

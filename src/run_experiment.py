@@ -30,10 +30,10 @@ warnings.filterwarnings('ignore')
 
 class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 autoencoder:torch, chosen_dataset:np,
+                 model:torch, model_args:dict, chosen_dataset:np,
                  num_epochs:int, patience:int, batch_size:int,
                  learning_rate=1e-4, weight_decay=0.0,
-                 debug=False, task='train_eval'):
+                 task='train_eval'):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -83,10 +83,9 @@ class Experiment(object):
             torch.utils.data.Dataset."""
             
         self.descriptor = 'Model-' + descriptor
-        print(self.descriptor)
+        print(f'model_name: {self.descriptor}')
         self.general_results_dir = general_results_dir
         self.set_up_results_dirs() #Results dirs for output files and saved models
-        self.autoencoder = autoencoder
         self.chosen_dataset = chosen_dataset
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
@@ -94,20 +93,13 @@ class Experiment(object):
         self.save_model_every_epoch=False
         
 
-        #num_workers is number of threads to use for data loading
-        if debug:
-            self.num_workers = 0
-            self.batch_size = 1
-        else:
-            self.num_workers = 1
-            self.batch_size = batch_size
-        print('num_workers =',self.num_workers)
-        print('batch_size =',self.batch_size)
+        self.batch_size = batch_size
+        print(f'batch_size: {self.batch_size}')
         
         
         #Set Device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print('device =',str(self.device))
+        print(f'device: {str(self.device)}')
         
         
         #Set Task
@@ -135,16 +127,20 @@ class Experiment(object):
         self.best_valid_epoch = 0
         self.min_test_loss = np.inf
         
+        
         #Set model and optimozer
-        self.model = self.autoencoder(in_channel=self.chosen_dataset[0].shape[-1]).to(self.device)
+        self.model = model(in_channel=self.chosen_dataset[0].shape[-1],
+                           **model_args)
+        self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), 
                                           lr=self.learning_rate, 
                                           weight_decay=self.weight_decay)
-        print(f'Running with optimizer lr={str(self.learning_rate)}',
+        
+        print(f'optimizer: lr={str(self.learning_rate)}',
               f'and weight_decay={str(self.weight_decay)}')
 
         #Run everything
-        self.run_model()
+        #self.run_model()
     
     
     ### Methods ###
@@ -167,7 +163,8 @@ class Experiment(object):
             os.mkdir(self.backup_dir)
         
         
-    def run_model(self):                
+    def run_model(self):  
+        print('Training start ...')              
         start_epoch = 0
         if self.task in ['train_eval', 'train_all']:
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
@@ -260,6 +257,30 @@ class Experiment(object):
         
         #Return loss and classification predictions and classification gr truth
         return epoch_loss
+    
+    
+    def load_trained_model(self, old_model_path):
+        print(f'Loading model parameters from {old_model_path}')
+        self.old_model_path = old_model_path
+        check_point = torch.load(self.old_model_path)
+        self.model.load_state_dict(check_point['params'])
+        self.optimizer.load_state_dict(check_point['optimizer'])
+        
+        
+    def get_latent(self) -> np:
+        latents=list()
+        dataset_ = utils.FeatureDataset(self.chosen_dataset, 'all')
+        loader = DataLoader(dataset_,batch_size=4096,shuffle=False)
+        
+        with torch.no_grad():
+            self.model.eval()
+            for i, data in enumerate(loader):
+                x = data.to(self.device)
+                z = self.model._encode(x)
+                latents.append(z.detach().cpu().numpy())
+        
+        return np.concatenate(latents, axis=0)
+
             
        
             

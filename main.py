@@ -2,13 +2,16 @@
 
 import timeit
 
-from src import run_experiment
+from src.run_experiment import Experiment
 from models.autoencoder import AutoEncoder
 from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
-    sem = SEMDataset('XLI_exhaust_011.bcf')
+    file_path='/Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf'
+    # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
+    
+    sem = SEMDataset(file_path)
         
     sem.rebin_signal(size=(2,2))
     remove_fist_peak(sem.edx_bin)
@@ -21,13 +24,13 @@ if __name__ == '__main__':
 
     
     general_results_dir='results'
+
+    Ex = Experiment(descriptor='AE_unmix',
+                     general_results_dir=general_results_dir,
+                     model = AutoEncoder, 
+                     model_args={'hidden_layer_sizes':(512,256,128)},
+                     chosen_dataset = dataset_norm,
+                     num_epochs=10, patience = 5,
+                     batch_size = 64)
     
-    tot0 = timeit.default_timer()
-    run_experiment.DoExperiment(descriptor='AE_unmix',
-                                general_results_dir=general_results_dir,
-                                autoencoder = AutoEncoder,
-                                chosen_dataset = dataset_norm,
-                                num_epochs=10, patience = 5,
-                                batch_size = 64)
-    tot1 = timeit.default_timer()
-    print('Total Time', round((tot1 - tot0)/60.0,2),'minutes')
+
