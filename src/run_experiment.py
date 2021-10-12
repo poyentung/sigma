@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import os
 import numpy as np
 import random
 import timeit
-import datetime
 
 import sys
 sys.path.append('../')
@@ -33,10 +31,10 @@ warnings.filterwarnings('ignore')
 
 class DoExperiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 autoencoder:torch, 
-                 learning_rate:float, weight_decay:float,
+                 autoencoder:torch, chosen_dataset:np,
                  num_epochs:int, patience:int, batch_size:int,
-                 debug:bool, task:str, chosen_dataset:np):
+                 learning_rate=1e-4, weight_decay=0.0,
+                 debug=False, task='train_eval'):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -94,7 +92,7 @@ class DoExperiment(object):
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.num_epochs = num_epochs
-        self.save_model_every_epoch=False
+        #self.save_model_every_epoch=False
         
         
         #num_workers is number of threads to use for data loading
@@ -102,7 +100,7 @@ class DoExperiment(object):
             self.num_workers = 0
             self.batch_size = 1
         else:
-            self.num_workers = 16
+            self.num_workers = 1
             self.batch_size = batch_size
         print('num_workers =',self.num_workers)
         print('batch_size =',self.batch_size)
@@ -172,26 +170,24 @@ class DoExperiment(object):
         self.optimizer = torch.optim.Adam(self.model.parameters(), 
                                           lr=self.learning_rate, 
                                           weight_decay=self.weight_decay)
-        
-        
+                
         start_epoch = 0
         
         if self.task in ['train_eval', 'train_all']:
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
-                                          shuffle=True, num_workers = self.num_workers)
+                                          shuffle=True)
             test_dataloader = DataLoader(self.dataset_test, batch_size=self.batch_size,
-                                         shuffle=False, num_workers = self.num_workers)
+                                         shuffle=False)
             
             for epoch in range(start_epoch, self.num_epochs):  # loop over the dataset multiple times
-                print('Epoch',epoch)
                 
                 t0 = timeit.default_timer()
                 self.train(train_dataloader, epoch)
                 self.test(test_dataloader, epoch)
                 
-                if self.save_model_every_epoch: 
-                    self.save_model(epoch)
-                    self.save_evals(epoch)
+                #if self.save_model_every_epoch: 
+                #    self.save_model(epoch)
+                #    self.save_evals(epoch)
                     
                 if self.patience_remaining <= 0:
                     print('No more patience (',self.initial_patience,') left at epoch',epoch)
@@ -199,25 +195,25 @@ class DoExperiment(object):
                     break
                 
                 t1 = timeit.default_timer()
-                print('Epoch',epoch,'time:',round((t1 - t0)/60.0,2),'minutes')
+                print(f'[{epoch+1:02} / {self.num_epochs:02}]',\
+                       f'train_loss: {self.train_loss[epoch]:.3f}',\
+                       f'test_loss: {self.test_loss[epoch]:.3f}',\
+                       f'time: {round((t1 - t0),1)} sec')
                 
         #self.save_final_summary()
-    
     
     def train(self, dataloader, epoch):
         self.model.train()
         epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=True)
         self.train_loss[epoch] = epoch_loss
         
-        print("{:5s} {:<3d} {:11s} {:.3f}".format('Epoch', epoch, 'Train Loss', epoch_loss))
-    
     
     def test(self, dataloader, epoch):
         self.model.eval()
         with torch.no_grad():
             epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
         self.test_loss[epoch] = epoch_loss
-        self.early_stopping_check(epoch)
+        #self.early_stopping_check(epoch)
         
     
     def early_stopping_check(self, epoch):
@@ -226,7 +222,7 @@ class DoExperiment(object):
         test_loss = self.test_loss[epoch]
         if (test_loss < self.min_test_loss) or epoch==0: #then save parameters
             self.min_test_loss = test_loss
-            if not self.save_model_every_epoch: self.save_model(epoch) 
+            #if not self.save_model_every_epoch: self.save_model(epoch) 
             self.best_valid_epoch = epoch
             self.patience_remaining = self.initial_patience
             print('model saved, test loss',test_loss)
