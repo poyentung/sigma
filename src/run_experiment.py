@@ -86,13 +86,13 @@ class DoExperiment(object):
         self.descriptor = 'Model-' + descriptor
         print(self.descriptor)
         self.general_results_dir = general_results_dir
-        # self.set_up_results_dirs() #Results dirs for output files and saved models
+        self.set_up_results_dirs() #Results dirs for output files and saved models
         self.autoencoder = autoencoder
         self.chosen_dataset = chosen_dataset
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.num_epochs = num_epochs
-        #self.save_model_every_epoch=False
+        self.save_model_every_epoch=False
         
         
         #num_workers is number of threads to use for data loading
@@ -142,23 +142,23 @@ class DoExperiment(object):
     
     
     ### Methods ###
-    # def set_up_results_dirs(self):
-    #     if not os.path.isdir(self.general_results_dir):
-    #         os.mkdir(self.general_results_dir)
+    def set_up_results_dirs(self):
+        if not os.path.isdir(self.general_results_dir):
+            os.mkdir(self.general_results_dir)
             
-    #     self.date_and_descriptor = datetime.datetime.today().strftime('%Y-%m-%d')+'_'+self.descriptor
-    #     self.results_dir = os.path.join(self.general_results_dir,self.date_and_descriptor)
+        self.date_and_descriptor = datetime.datetime.today().strftime('%Y-%m-%d')+'_'+self.descriptor
+        self.results_dir = os.path.join(self.general_results_dir,self.date_and_descriptor)
         
-    #     if not os.path.isdir(self.results_dir):
-    #         os.mkdir(self.results_dir)
-    #     self.params_dir = os.path.join(self.results_dir,'params')
-        
-    #     if not os.path.isdir(self.params_dir):
-    #         os.mkdir(self.params_dir)
-    #     self.backup_dir = os.path.join(self.results_dir,'backup')
-        
-    #     if not os.path.isdir(self.backup_dir):
-    #         os.mkdir(self.backup_dir)
+        if not os.path.isdir(self.results_dir):
+            os.mkdir(self.results_dir)
+
+        self.params_dir = os.path.join(self.results_dir,'params')
+        if not os.path.isdir(self.params_dir):
+            os.mkdir(self.params_dir)
+
+        self.backup_dir = os.path.join(self.results_dir,'backup')
+        if not os.path.isdir(self.backup_dir):
+            os.mkdir(self.backup_dir)
         
         
     def run_model(self):
@@ -185,13 +185,13 @@ class DoExperiment(object):
                 self.train(train_dataloader, epoch)
                 self.test(test_dataloader, epoch)
                 
-                #if self.save_model_every_epoch: 
-                #    self.save_model(epoch)
-                #    self.save_evals(epoch)
+                if self.save_model_every_epoch: 
+                   self.save_model(epoch)
+                   self.save_evals(epoch)
                     
                 if self.patience_remaining <= 0:
                     print('No more patience (',self.initial_patience,') left at epoch',epoch)
-                    print('--> Implementing early stopping. Best epoch was:',self.best_valid_epoch)
+                    print('--> Implementing early stopping. Best epoch was:', self.best_valid_epoch)
                     break
                 
                 t1 = timeit.default_timer()
@@ -213,7 +213,7 @@ class DoExperiment(object):
         with torch.no_grad():
             epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
         self.test_loss[epoch] = epoch_loss
-        #self.early_stopping_check(epoch)
+        self.early_stopping_check(epoch)
         
     
     def early_stopping_check(self, epoch):
@@ -222,12 +222,18 @@ class DoExperiment(object):
         test_loss = self.test_loss[epoch]
         if (test_loss < self.min_test_loss) or epoch==0: #then save parameters
             self.min_test_loss = test_loss
-            #if not self.save_model_every_epoch: self.save_model(epoch) 
+            if not self.save_model_every_epoch: 
+                self.save_model(epoch) 
             self.best_valid_epoch = epoch
             self.patience_remaining = self.initial_patience
             print('model saved, test loss',test_loss)
         else:
             self.patience_remaining -= 1
+    
+    def save_model(self, epoch):
+        check_point = {'params': self.model.state_dict(),                            
+                       'optimizer': self.optimizer.state_dict()}
+        torch.save(check_point, os.path.join(self.params_dir, self.descriptor+'_epoch'+str(epoch)))
             
     
     def iterate_through_batches(self, model, dataloader, epoch, training):

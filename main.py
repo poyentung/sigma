@@ -8,9 +8,9 @@ from load_dataset import exhaust
 
 if __name__ == '__main__':
     
-    sem = exhaust.SEMDataset('/Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf')
+    sem = exhaust.SEMDataset('bcf_files/XLI_exhaust_011.bcf')
     
-    sem.rebin_signal()
+    sem.rebin_signal() 
     exhaust.remove_fist_peak(sem.edx_bin)
     exhaust.peak_intensity_normalisation(sem.edx_bin)
     exhaust.peak_denoising_PCA(sem.edx_bin, plot_results=False)
