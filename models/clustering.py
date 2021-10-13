@@ -113,7 +113,7 @@ class PhaseClassifier(object):
         return binary_map, binary_map_indices, edx_profile
     
     
-    def phase_statics(self, cluster_num,element_peaks=['Fe_Ka','O_Ka'],**binary_filter_args):
+    def phase_statics(self, cluster_num,element_peaks=['Fe_Ka','O_Ka'],binary_filter_args={}):
         """
 
         Parameters
@@ -133,8 +133,7 @@ class PhaseClassifier(object):
             These include 'area','equivalent_diameter', 'major_axis_length','minor_axis_length','min_intensity','mean_intensity','max_intensity'
 
         """
-        binary_map, _, _ = self.get_binary_map_edx_profile(cluster_num, 
-                                                           **binary_filter_args)
+        binary_map, _, _ = self.get_binary_map_edx_profile(cluster_num, **binary_filter_args)
         pixel_to_um = self.edx.axes_manager[0].scale
         prop_list = ['area',
                      'equivalent_diameter', #Added... verify if it works
@@ -159,10 +158,10 @@ class PhaseClassifier(object):
             if i == 0: 
                 for prop in prop_list:
                     if prop =='area':
-                        stat_info[prop] = [cluster[prop]*pixel_to_um**2 for cluster in clusters]
+                        stat_info[f'{prop} (um^2)'] = [cluster[prop]*pixel_to_um**2 for cluster in clusters]
                     
                     elif prop in ['equivalent_diameter','major_axis_length','minor_axis_length']:
-                        stat_info[prop] = [cluster[prop]*pixel_to_um for cluster in clusters]
+                        stat_info[f'{prop} (um)'] = [cluster[prop]*pixel_to_um for cluster in clusters]
                     
                     elif prop in ['min_intensity','mean_intensity','max_intensity']:
                         stat_info[f'{prop}_{element}'] = [cluster[prop] for cluster in clusters]
@@ -172,7 +171,7 @@ class PhaseClassifier(object):
                 for prop in ['min_intensity','mean_intensity','max_intensity']:
                     stat_info[f'{element}_{prop}'] = [cluster[prop] for cluster in clusters]
                 
-        return pd.DataFrame(data=stat_info)
+        return pd.DataFrame(data=stat_info).round(3)
         
         
     
