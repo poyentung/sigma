@@ -21,6 +21,8 @@ class SEMDataset(object):
         
         self.feature_list = ['O_Ka', 'Fe_Ka', 'Mg_Ka', 'Ca_Ka', 
                              'Al_Ka', 'C_Ka', 'Si_Ka', 'S_Ka']
+        
+        self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
     
     def rebin_signal(self, size=(2,2)):
         print(f'Rebinning the intensity with the size of {size}')
@@ -163,7 +165,8 @@ def plot_intensity_np(dataset, feature_list, save=None, **kwargs):
         fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
   
 
-def plotDist(sem:SEMDataset, idx=0, **kwargs):
+def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
+    idx = sem.feature_dict[peak]
     sns.set_style('ticks')
     dataset = sem.get_feature_maps()
     dataset_avg = avgerage_neighboring_signal(dataset)
@@ -192,7 +195,7 @@ def plotDist(sem:SEMDataset, idx=0, **kwargs):
     
     for j in range(3):
         dataset = dataset_list[j]
-        sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], **kwargs)
+        sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], bins=50, **kwargs)
         
         axs[1,j].set_xlabel('Element Intensity')
         axs[1,j].yaxis.set_major_formatter(formatter)

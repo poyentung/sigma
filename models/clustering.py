@@ -11,7 +11,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from scipy import ndimage as ndi
 from sklearn.cluster import MeanShift
-from skimage import io, img_as_float
+from skimage import io, img_as_float, measure
 from scipy import fftpack
 
 import matplotlib as mpl
@@ -53,6 +53,127 @@ class PhaseClassifier(object):
         
         self.peak_list = ['O_Ka','Fe_Ka','Mg_Ka','Ca_Ka', 'Al_Ka', 
                           'C_Ka', 'Si_Ka','S_Ka','Fe_La']
+        
+
+#################
+# Data Analysus #--------------------------------------------------------------
+#################
+
+    def get_binary_map_edx_profile(self, cluster_num=0, threshold=0.8, 
+                                   denoise=False,keep_fraction=0.13, 
+                                   binary_filter_threshold=0.2):
+        
+        phase = self.model.predict_proba(self.latent)[:,cluster_num]
+        
+        if denoise == False:
+            binary_map = np.where(phase>threshold,1,0).reshape(self.height,self.width)
+            binary_map_indices = np.where(phase.reshape(self.height,self.width)>threshold)
+        
+        else:
+            filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
+            image_fft = fftpack.fft2(filtered_img)
+            image_fft2 = image_fft.copy()
+            
+            # Set r and c to be the number of rows and columns of the array.
+            r, c = image_fft2.shape
+        
+            # Set to zero all rows with indices between r*keep_fraction and
+            # r*(1-keep_fraction):
+            image_fft2[int(r*keep_fraction):int(r*(1-keep_fraction))] = 0
+        
+            # Similarly with the columns:
+            image_fft2[:, int(c*keep_fraction):int(c*(1-keep_fraction))] = 0
+        
+            # Transformed the filtered image back to real space
+            image_new = fftpack.ifft2(image_fft2).real
+        
+            binary_map = np.where(image_new<binary_filter_threshold,0,1)
+            binary_map_indices = np.where(image_new>binary_filter_threshold)
+            
+        # Get edx profile in the filtered phase region
+        x_id = binary_map_indices[0].reshape(-1,1)
+        y_id = binary_map_indices[1].reshape(-1,1)
+        x_y = np.concatenate([x_id, y_id],axis=1)
+        x_y_indices = tuple(map(tuple, x_y))
+        
+        total_edx_profiles = list()
+        for x_y_index in x_y_indices:
+            total_edx_profiles.append(self.edx.data[x_y_index].reshape(1,-1))
+        total_edx_profiles = np.concatenate(total_edx_profiles,axis=0)
+        
+        size = self.edx.axes_manager[2].size
+        scale = self.edx.axes_manager[2].scale
+        offset = self.edx.axes_manager[2].offset
+        energy_axis = [((a*scale) + offset) for a in range(0,size)]
+
+        element_intensity_sum = total_edx_profiles.sum(axis=0)
+        edx_profile = pd.DataFrame(data=np.column_stack([energy_axis, element_intensity_sum]),
+                                   columns=['energy', 'intensity'])
+        
+        return binary_map, binary_map_indices, edx_profile
+    
+    
+    def phase_statics(self, cluster_num,element_peaks=['Fe_Ka','O_Ka'],**binary_filter_args):
+        """
+
+        Parameters
+        ----------
+        binary_map : np.array
+            The filtered binary map for analysis.
+        element_peaks : dict(), optional
+            Determine whether the output includes the elemental intensity from 
+            the origianl edx signal. The default is ['Fe_Ka','O_Ka'].
+        binary_filter_args : dict()
+            Determine the parameters to generate the binary for the analysis.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe whcih contains all statistical inforamtion of phase distribution.
+            These include 'area','equivalent_diameter', 'major_axis_length','minor_axis_length','min_intensity','mean_intensity','max_intensity'
+
+        """
+        binary_map, _, _ = self.get_binary_map_edx_profile(cluster_num, 
+                                                           **binary_filter_args)
+        pixel_to_um = self.edx.axes_manager[0].scale
+        prop_list = ['area',
+                     'equivalent_diameter', #Added... verify if it works
+                     'major_axis_length',
+                     'minor_axis_length',
+                     'min_intensity',
+                     'mean_intensity',
+                     'max_intensity']
+        
+        label_binary_map = measure.label(binary_map,connectivity=2)
+        element_maps = self.sem.get_feature_maps()
+        
+        # Create a dataframe to record all statical information
+        stat_info = dict()
+        
+        # for each element, create an individual element intensity statics
+        for i, element in enumerate(element_peaks):
+            element_idx = self.sem.feature_dict[element]
+            clusters = measure.regionprops(label_image=label_binary_map,intensity_image=element_maps[:,:,element_idx])
+            
+            # for the first iteration, record everything apart from elemental intensity i.e. area, length ...
+            if i == 0: 
+                for prop in prop_list:
+                    if prop =='area':
+                        stat_info[prop] = [cluster[prop]*pixel_to_um**2 for cluster in clusters]
+                    
+                    elif prop in ['equivalent_diameter','major_axis_length','minor_axis_length']:
+                        stat_info[prop] = [cluster[prop]*pixel_to_um for cluster in clusters]
+                    
+                    elif prop in ['min_intensity','mean_intensity','max_intensity']:
+                        stat_info[f'{prop}_{element}'] = [cluster[prop] for cluster in clusters]
+            
+            # for the remaining iteration, only add elemental intensity into the dict()
+            else:
+                for prop in ['min_intensity','mean_intensity','max_intensity']:
+                    stat_info[f'{element}_{prop}'] = [cluster[prop] for cluster in clusters]
+                
+        return pd.DataFrame(data=stat_info)
+        
         
     
 #################
@@ -120,7 +241,7 @@ class PhaseClassifier(object):
             axs[i,0].set_title('Probability of each pixel for cluster '+str(i+1))
             
             axs[i,0].axis('off')
-            cbar = fig.colorbar(im,ax=axs[i,0], shrink=0.83, pad=0.025)
+            cbar = fig.colorbar(im,ax=axs[i,0], shrink=0.9, pad=0.025)
             cbar.outline.set_visible(False)
             cbar.ax.tick_params(labelsize=10, size=0)
     
@@ -155,59 +276,6 @@ class PhaseClassifier(object):
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
     
-    
-    def get_binary_map_edx_profile(self, cluster_num=0, threshold=0.8, 
-                                   denoise=False,keep_fraction=0.13, 
-                                   binary_filter_threshold=0.2):
-        
-        phase = self.model.predict_proba(self.latent)[:,cluster_num]
-        
-        if denoise == False:
-            binary_map = np.where(phase>threshold,1,0).reshape(self.height,self.width)
-            binary_map_indices = np.where(phase.reshape(self.height,self.width)>threshold)
-        
-        else:
-            filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
-            image_fft = fftpack.fft2(filtered_img)
-            image_fft2 = image_fft.copy()
-            
-            # Set r and c to be the number of rows and columns of the array.
-            r, c = image_fft2.shape
-        
-            # Set to zero all rows with indices between r*keep_fraction and
-            # r*(1-keep_fraction):
-            image_fft2[int(r*keep_fraction):int(r*(1-keep_fraction))] = 0
-        
-            # Similarly with the columns:
-            image_fft2[:, int(c*keep_fraction):int(c*(1-keep_fraction))] = 0
-        
-            # Transformed the filtered image back to real space
-            image_new = fftpack.ifft2(image_fft2).real
-        
-            binary_map = np.where(image_new<binary_filter_threshold,0,1)
-            binary_map_indices = np.where(image_new>binary_filter_threshold)
-            
-        # Get edx profile in the filtered phase region
-        x_id = binary_map_indices[0].reshape(-1,1)
-        y_id = binary_map_indices[1].reshape(-1,1)
-        x_y = np.concatenate([x_id, y_id],axis=1)
-        x_y_indices = tuple(map(tuple, x_y))
-        
-        total_edx_profiles = list()
-        for x_y_index in x_y_indices:
-            total_edx_profiles.append(self.edx.data[x_y_index].reshape(1,-1))
-        total_edx_profiles = np.concatenate(total_edx_profiles,axis=0)
-        
-        size = self.edx.axes_manager[2].size
-        scale = self.edx.axes_manager[2].scale
-        offset = self.edx.axes_manager[2].offset
-        energy_axis = [((a*scale) + offset) for a in range(0,size)]
-
-        element_intensity_sum = total_edx_profiles.sum(axis=0)
-        edx_profile = pd.DataFrame(data=np.column_stack([energy_axis, element_intensity_sum]),
-                                   columns=['energy', 'intensity'])
-        
-        return binary_map, binary_map_indices, edx_profile
     
     
     def plot_binary_map_edx_profile(self, cluster_num, 
@@ -265,10 +333,3 @@ class PhaseClassifier(object):
             
         fig.show()
     
-    
-
-    
-    
-    
-    
-        
