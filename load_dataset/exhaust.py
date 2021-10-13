@@ -31,7 +31,11 @@ class SEMDataset(object):
         self.bse_bin = self.bse.rebin(scale=(x, y))
         return (self.edx_bin, self.bse_bin)
     
-    def get_feature_maps(self) -> np:
+    def get_feature_maps(self, feature_list=None) -> np:
+        if feature_list is not None:
+            self.feature_list = feature_list
+            self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
+    
         num_elements=len(self.feature_list)
         
         if self.edx_bin is not None:
