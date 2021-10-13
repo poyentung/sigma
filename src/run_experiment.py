@@ -9,6 +9,8 @@ from . import utils
 
 import torch
 import torch.nn as nn
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 def same_seeds(seed):
@@ -30,10 +32,7 @@ warnings.filterwarnings('ignore')
 
 class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 model:torch, model_args:dict, chosen_dataset:np,
-                 num_epochs:int, patience:int, batch_size:int,
-                 learning_rate=1e-4, weight_decay=0.0,
-                 task='train_eval'):
+                 model:torch, model_args:dict, chosen_dataset:np):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -87,62 +86,21 @@ class Experiment(object):
         self.general_results_dir = general_results_dir
         self.set_up_results_dirs() #Results dirs for output files and saved models
         self.chosen_dataset = chosen_dataset
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.num_epochs = num_epochs
         self.save_model_every_epoch=False
-        
-
-        self.batch_size = batch_size
-        print(f'batch_size: {self.batch_size}')
-        
         
         #Set Device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'device: {str(self.device)}')
-        
-        
-        #Set Task
-        self.task = task
-        assert self.task in ['train_eval', 'train_all']
-        
-        
-        #Data 
-        if self.task  == 'train_eval':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'train')
-            self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
-        elif self.task  == 'train_all':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all')
-        
-        
-        #Tracking losses and evaluation results
-        if self.task in ['train_eval', 'train_all']:
-            self.train_loss = np.zeros((self.num_epochs))
-            self.test_loss = np.zeros((self.num_epochs))
-            
-            
-        #For early stopping
-        self.initial_patience = patience
-        self.patience_remaining = patience
-        self.best_valid_epoch = 0
-        self.min_test_loss = np.inf
-        
-        
-        #Set model and optimozer
+         
+        #Set Model
         self.model = model(in_channel=self.chosen_dataset[0].shape[-1],
                            **model_args)
         self.model.to(self.device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), 
-                                          lr=self.learning_rate, 
-                                          weight_decay=self.weight_decay)
+        self.optimizer = Adam(self.model.parameters())
+        self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
+                                                        verbose=True, patience = 5, 
+                                                        threshold=1e-2, min_lr=1e-7)
         
-        print(f'optimizer: lr={str(self.learning_rate)}',
-              f'and weight_decay={str(self.weight_decay)}')
-
-        #Run everything
-        #self.run_model()
-    
-    
     ### Methods ###
     def set_up_results_dirs(self):
         if not os.path.isdir(self.general_results_dir):
@@ -158,13 +116,55 @@ class Experiment(object):
         if not os.path.isdir(self.params_dir):
             os.mkdir(self.params_dir)
 
-        self.backup_dir = os.path.join(self.results_dir,'backup')
-        if not os.path.isdir(self.backup_dir):
-            os.mkdir(self.backup_dir)
+        # self.backup_dir = os.path.join(self.results_dir,'backup')
+        # if not os.path.isdir(self.backup_dir):
+        #     os.mkdir(self.backup_dir)
         
         
-    def run_model(self):  
-        print('Training start ...')              
+    def run_model(self, num_epochs:int, patience:int, batch_size:int,
+                 learning_rate=1e-4, weight_decay=0.0, task='train_eval'): 
+        
+        self.criterion = nn.MSELoss() 
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.num_epochs = num_epochs
+        print(f'num_epochs: {self.num_epochs}')
+        self.batch_size = batch_size
+        print(f'batch_size: {self.batch_size}')
+        
+        #Set Task
+        self.task = task
+        assert self.task in ['train_eval', 'train_all']
+        print(f'task: {self.task}')
+        
+        #Data 
+        if self.task == 'train_eval':
+            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'train')
+            self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
+        elif self.task == 'train_all':
+            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all')
+        
+        #Tracking losses and evaluation results
+        if self.task in ['train_eval', 'train_all']:
+            self.train_loss = np.zeros((self.num_epochs))
+            self.test_loss = np.zeros((self.num_epochs))
+            
+        #For early stopping
+        self.initial_patience = patience
+        self.patience_remaining = patience
+        self.best_valid_epoch = 0
+        self.min_test_loss = np.inf
+        
+        #Set Optimozer
+        self.optimizer = Adam(self.model.parameters(), 
+                              lr=self.learning_rate, 
+                              weight_decay=self.weight_decay)
+        
+        print(f'optimizer: lr={str(self.learning_rate)}',
+              f'and weight_decay={str(self.weight_decay)}\n')
+        
+        print('Start training ...\n')     
+         
         start_epoch = 0
         if self.task in ['train_eval', 'train_all']:
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
@@ -188,9 +188,9 @@ class Experiment(object):
                     break
                 
                 t1 = timeit.default_timer()
-                print(f'[{epoch+1:02} / {self.num_epochs:02}]',\
-                       f'train_loss: {self.train_loss[epoch]:.3f}',\
-                       f'test_loss: {self.test_loss[epoch]:.3f}',\
+                print(f'[{epoch+1:02}/{self.num_epochs:02}]',\
+                       f'train_loss: {self.train_loss[epoch]:.3f},',\
+                       f'test_loss: {self.test_loss[epoch]:.3f},',\
                        f'time: {round((t1 - t0),1)} sec')
                 
         #self.save_final_summary()
@@ -206,6 +206,7 @@ class Experiment(object):
         with torch.no_grad():
             epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
         self.test_loss[epoch] = epoch_loss
+        self.scheduler.step(epoch_loss)
         self.early_stopping_check(epoch)
         
     
@@ -219,7 +220,7 @@ class Experiment(object):
                 self.save_model(epoch) 
             self.best_valid_epoch = epoch
             self.patience_remaining = self.initial_patience
-            print('model saved, test loss',test_loss)
+            print(f'model saved, test_loss = {test_loss:.3f}')
         else:
             self.patience_remaining -= 1
     
@@ -230,7 +231,7 @@ class Experiment(object):
             
     
     def iterate_through_batches(self, model, dataloader, epoch, training):
-        epoch_loss = 0
+        epoch_loss = list()
         
         #Initialize numpy arrays for storing results. examples x labels
         #Do NOT use concatenation, or else you will have memory fragmentation.   
@@ -244,19 +245,18 @@ class Experiment(object):
             else:
                 with torch.set_grad_enabled(False):
                    recon_x = model(x)
-            
-            loss_func = nn.MSELoss() #includes application of sigmoid for numerical stability
-            loss = loss_func(recon_x, x)
+
+            loss = self.criterion(recon_x, x)
             
             if training:
                 loss.backward()
                 self.optimizer.step()   
             
-            epoch_loss += loss.item()
+            epoch_loss.append(loss.detach().item())
             torch.cuda.empty_cache()
         
         #Return loss and classification predictions and classification gr truth
-        return epoch_loss
+        return sum(epoch_loss)/len(epoch_loss)
     
     
     def load_trained_model(self, old_model_path):

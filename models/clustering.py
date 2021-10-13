@@ -44,7 +44,7 @@ class PhaseClassifier(object):
         
         
         if self.method == 'GaussianMixture':
-            self.model = GaussianMixture(**method_args).fit(self.dataset)
+            self.model = GaussianMixture(**method_args).fit(self.latent)
             
         self.peak_dict = {'Al_Ka': 1.49, 'C_Ka' : 0.28, 'Ca_Ka': 3.69,
                           'Cr_Ka': 5.41, 'Fe_Ka': 6.40, 'Fe_La': 0.70, 
@@ -101,18 +101,28 @@ class PhaseClassifier(object):
         n_component = self.model.n_components
         labels = self.model.predict(self.latent)
         means = []
+        dataset_ravel = self.dataset.reshape(-1,self.dataset.shape[2])
         for i in range(n_component):
-            mean = self.dataset[np.where(labels==i)[0]].mean(axis=0)
+            mean = dataset_ravel[np.where(labels==i)[0]].mean(axis=0)
             means.append(mean.reshape(1,-1))
         mu = np.concatenate(means,axis=0)
         prob_map = self.model.predict_proba(self.latent)
     
         fig, axs = plt.subplots(n_component, 2, figsize=(14, n_component*4.2),dpi=96, **kwargs)
         fig.subplots_adjust(hspace=0.35, wspace=0.1)
+        
+        formatter = mpl.ticker.ScalarFormatter(useMathText=True)
+        formatter.set_scientific(True) 
+        formatter.set_powerlimits((-1,1))
+        
         for i in range(n_component):
             im=axs[i,0].imshow(prob_map[:,i].reshape(self.height, self.width), cmap='viridis')
             axs[i,0].set_title('Probability of each pixel for cluster '+str(i+1))
-            fig.colorbar(im,ax=axs[i,0], shrink=0.8)
+            
+            axs[i,0].axis('off')
+            cbar = fig.colorbar(im,ax=axs[i,0], shrink=0.83, pad=0.025)
+            cbar.outline.set_visible(False)
+            cbar.ax.tick_params(labelsize=10, size=0)
     
             axs[i,1].bar(self.sem.feature_list, mu[i],width=0.6, color=plt.cm.get_cmap('tab10')(i*0.1))
             axs[i,1].set_title('Mean value for cluster '+str(i+1))
@@ -146,15 +156,15 @@ class PhaseClassifier(object):
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
     
     
-    def get_binary_map_and_edx_profile(self, cluster_num=0, threshold=0.8, 
-                                       denoise=False,keep_fraction=0.13, 
-                                       binary_filter_threshold=0.2):
+    def get_binary_map_edx_profile(self, cluster_num=0, threshold=0.8, 
+                                   denoise=False,keep_fraction=0.13, 
+                                   binary_filter_threshold=0.2):
         
         phase = self.model.predict_proba(self.latent)[:,cluster_num]
         
         if denoise == False:
-            phase_map = np.where(phase<threshold,0,1).reshape(self.height,self.width)
-            phase_indices = np.where(phase_map>threshold)
+            binary_map = np.where(phase>threshold,1,0).reshape(self.height,self.width)
+            binary_map_indices = np.where(phase.reshape(self.height,self.width)>threshold)
         
         else:
             filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
@@ -174,42 +184,86 @@ class PhaseClassifier(object):
             # Transformed the filtered image back to real space
             image_new = fftpack.ifft2(image_fft2).real
         
-            phase_map = np.where(image_new<binary_filter_threshold,0,1)
-            phase_indices = np.where(image_new>binary_filter_threshold)
+            binary_map = np.where(image_new<binary_filter_threshold,0,1)
+            binary_map_indices = np.where(image_new>binary_filter_threshold)
             
         # Get edx profile in the filtered phase region
-        x_id = phase_indices[0].reshape(-1,1)
-        y_id = phase_indices[1].reshape(-1,1)
+        x_id = binary_map_indices[0].reshape(-1,1)
+        y_id = binary_map_indices[1].reshape(-1,1)
         x_y = np.concatenate([x_id, y_id],axis=1)
-        phase_indices = tuple(map(tuple, x_y))
+        x_y_indices = tuple(map(tuple, x_y))
         
         total_edx_profiles = list()
-        for xy in phase_indices:
-            total_edx_profiles.append(self.edx.data[xy].reshape(1,-1))
+        for x_y_index in x_y_indices:
+            total_edx_profiles.append(self.edx.data[x_y_index].reshape(1,-1))
         total_edx_profiles = np.concatenate(total_edx_profiles,axis=0)
         
         size = self.edx.axes_manager[2].size
         scale = self.edx.axes_manager[2].scale
         offset = self.edx.axes_manager[2].offset
         energy_axis = [((a*scale) + offset) for a in range(0,size)]
+
         element_intensity_sum = total_edx_profiles.sum(axis=0)
+        edx_profile = pd.DataFrame(data=np.column_stack([energy_axis, element_intensity_sum]),
+                                   columns=['energy', 'intensity'])
         
-        
-        return phase_map, pd.DataFrame()
+        return binary_map, binary_map_indices, edx_profile
     
     
-    def get_edx_profile(self, num_cluster=3):
+    def plot_binary_map_edx_profile(self, cluster_num, 
+                                    binary_filter_args={'threshold':0.8, 
+                                                        'denoise':False, 'keep_fraction':0.13, 
+                                                        'binary_filter_threshold':0.2},
+                                    save=None,
+                                    **kwargs):
         
-        total = list()
-        for i in x_y_idx:
-            total.append(self.edx.data[i].reshape(1,-1))
-        total = np.concatenate(total,axis=0)
+        binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
+                                                                                      **binary_filter_args)
         
-        size = edx_2xbin.axes_manager[2].size
-        scale = edx_2xbin.axes_manager[2].scale
-        offset = edx_2xbin.axes_manager[2].offset
-        x = [((a*scale) + offset) for a in range(0,size)]
-        intensity = total.sum(axis=0)
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,3), dpi=150,
+                                gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
+
+        axs[0].imshow(binary_map, interpolation='none', alpha=1)
+        axs[0].set_title('Filtered Binary map')
+        axs[0].axis('off')
+        axs[0].set_aspect('equal', 'box')
+    
+        axs[1].imshow(self.sem.bse_bin.data, cmap='gray',interpolation='none', alpha=1)
+        axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
+        axs[1].grid(False)
+        axs[1].axis('off')
+        axs[1].set_title('BSE + Phase Map')
+        
+        intensity = edx_profile['intensity'].to_numpy()
+        axs[2].set_xticks(np.arange(0, 11, step=1))
+        axs[2].set_yticks(np.arange(0, int(intensity.max())+1, 
+                                    step=int((intensity.max()/5))))
+        
+        axs[2].set_xticklabels(np.arange(0, 11, step=1), fontsize=8)
+        axs[2].set_yticklabels(np.arange(0,  int(intensity.max())+1, 
+                                         step=int((intensity.max()/5))), fontsize=8)
+        
+        offset = self.edx.axes_manager[2].offset
+        axs[2].set_xlim(offset,8)
+        axs[2].set_xlabel('Energy axis / keV', fontsize=10)
+        axs[2].set_ylabel('X-rays / Counts', fontsize=10)
+
+        axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
+                    linewidth=1,color=sns.color_palette()[cluster_num])
+        
+        zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        for el in self.peak_list:
+            peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
+            axs[2].vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
+            axs[2].text(self.peak_dict[el]-0.125, peak+(int(intensity.max())/20), el, rotation='vertical', fontsize=7.5)
+        
+        # fig.subplots_adjust(left=0.1)
+        plt.tight_layout()
+        
+        if save is not None:
+            fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
+            
+        fig.show()
     
     
 

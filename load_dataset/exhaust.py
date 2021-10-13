@@ -5,8 +5,9 @@ from hyperspy._signals.eds_sem import EDSSEMSpectrum
 
 import numpy as np
 import itertools
+import matplotlib as mpl
 from matplotlib import pyplot as plt
-
+import seaborn as sns
 
 class SEMDataset(object):
     def __init__(self, file_path:str):
@@ -117,6 +118,7 @@ def avgerage_neighboring_signal(dataset:np) -> np:
          
     return new_dataset
 
+
 #################
 # Visualization #--------------------------------------------------------------
 #################
@@ -159,4 +161,43 @@ def plot_intensity_np(dataset, feature_list, save=None, **kwargs):
     plt.show()
     if save is not None:
         fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
+  
+
+def plotDist(sem:SEMDataset, idx=0, **kwargs):
+    sns.set_style('ticks')
+    dataset = sem.get_feature_maps()
+    dataset_avg = avgerage_neighboring_signal(dataset)
+    dataset_ins = z_score_normalisation(dataset_avg) 
+    
+    dataset_list= [dataset, dataset_avg, dataset_ins]
+    dataset_lable=['Original', 'Neighbour Intensity Averging', 'Z-score Normalisation']
+    
+    formatter = mpl.ticker.ScalarFormatter(useMathText=True)
+    formatter.set_scientific(True) 
+    formatter.set_powerlimits((-1,1)) 
+
+    fig, axs = plt.subplots(2,3, figsize=(10,5), dpi=100, gridspec_kw={'height_ratios': [2, 1.5]})
+    #fig.suptitle(f'Intensity Distribution of {feature_list[idx]}', y = .93)
+    
+    for i in range(3):
+        dataset = dataset_list[i]
+        im = axs[0,i].imshow(dataset[:,:,idx].round(2),cmap='viridis')
+        axs[0,i].set_aspect('equal')
+        axs[0,i].set_title(f'{dataset_lable[i]}')
+        
+        axs[0,i].axis('off')
+        cbar = fig.colorbar(im,ax=axs[0,i], shrink=0.83, pad=0.025)
+        cbar.outline.set_visible(False)
+        cbar.ax.tick_params(labelsize=10, size=0)
+    
+    for j in range(3):
+        dataset = dataset_list[j]
+        sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], **kwargs)
+        
+        axs[1,j].set_xlabel('Element Intensity')
+        axs[1,j].yaxis.set_major_formatter(formatter)
+        if j!=0:
+            axs[1,j].set_ylabel(' ')
+    
+    fig.subplots_adjust(wspace=0.2, hspace=0.1)
     

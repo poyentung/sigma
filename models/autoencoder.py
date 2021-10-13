@@ -43,7 +43,7 @@ class AutoEncoder(nn.Module):
                                      nn.LayerNorm(self.hls[0]),
                                      nn.LeakyReLU(0.02),
                                      
-                                     nn.Linear(self.hls[0],self.in_channel),
+                                     nn.Linear(self.hls[0],self.in_channel)
                                     )
         
         self.apply(weights_init)
