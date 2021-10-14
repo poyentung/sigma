@@ -58,10 +58,10 @@ class PhaseClassifier(object):
         if method_args['n_components'] <= 10:
             self.color_palette = 'tab10'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
-            self.color = plt.cm.get_cmap('nipy_spectral')
+            self.color = plt.cm.get_cmap('tab10')
         else:
             self.color_palette = 'nipy_spectral'
-            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=method_args['n_components'])
             self.color = plt.cm.get_cmap('nipy_spectral')
             
 
@@ -73,7 +73,6 @@ class PhaseClassifier(object):
                                    denoise=False,keep_fraction=0.13, 
                                    binary_filter_threshold=0.2):
         
-        cluster_num -= 1
         phase = self.model.predict_proba(self.latent)[:,cluster_num]
         
         if denoise == False:
@@ -257,10 +256,10 @@ class PhaseClassifier(object):
             
             if self.method_args['n_components'] <= 10:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
-                             color = plt.cm.get_cmap('tab10')(i*0.1))
+                             color = self.color(i*0.1))
             else:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
-                             color = self.color(i*(1.0/self.method_args['n_components'])))
+                             color = self.color(i*(self.method_args['n_components']-1)**-1))
                              
             axs[i,1].set_title('Mean value for cluster '+str(i+1))
     
