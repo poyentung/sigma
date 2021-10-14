@@ -57,12 +57,10 @@ class PhaseClassifier(object):
         # Set color for phase visualisation
         if method_args['n_components'] <= 10:
             self.color_palette = 'tab10'
-            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
-            self.color = plt.cm.get_cmap('tab10')
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=9)
         else:
-            self.color_palette = 'nipy_spectral'
-            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=method_args['n_components'])
-            self.color = plt.cm.get_cmap('nipy_spectral')
+            self.color_palette = 'jet'
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.method_args['n_components']-1)
             
 
 #################
@@ -247,7 +245,7 @@ class PhaseClassifier(object):
         
         for i in range(n_component):
             im=axs[i,0].imshow(prob_map[:,i].reshape(self.height, self.width), cmap='viridis')
-            axs[i,0].set_title('Probability of each pixel for cluster '+str(i+1))
+            axs[i,0].set_title('Probability of each pixel for cluster '+str(i))
             
             axs[i,0].axis('off')
             cbar = fig.colorbar(im,ax=axs[i,0], shrink=0.9, pad=0.025)
@@ -256,10 +254,10 @@ class PhaseClassifier(object):
             
             if self.method_args['n_components'] <= 10:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
-                             color = self.color(i*0.1))
+                             color = plt.cm.get_cmap(self.color_palette)(i*0.1))
             else:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
-                             color = self.color(i*(self.method_args['n_components']-1)**-1))
+                             color = plt.cm.get_cmap(self.color_palette)(i*(self.method_args['n_components']-1)**-1))
                              
             axs[i,1].set_title('Mean value for cluster '+str(i+1))
     
@@ -282,8 +280,13 @@ class PhaseClassifier(object):
         axs[0].set_title('BSE')
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
-        axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
-                      norm=self.color_norm, alpha=0.75)
+        
+        if self.method_args['n_components'] <= 10:
+            axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
+                          norm=self.color_norm, alpha=0.75)
+        else:
+            axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
+                          alpha=0.75, norm=self.color_norm)
         axs[1].set_title('Phase map')
     
         fig.subplots_adjust(wspace=0.05, hspace=0.)
@@ -332,13 +335,14 @@ class PhaseClassifier(object):
         axs[2].set_xlabel('Energy axis / keV', fontsize=10)
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
+        
         if self.method_args['n_components'] <= 10:
             axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
-                    linewidth=1,color=self.color(cluster_num*0.1))
+                    linewidth=1,color=plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
         else:
             axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
                         linewidth=1,
-                        color=self.color(cluster_num*(1.0/self.method_args['n_components'])))
+                        color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.method_args['n_components']-1)**-1))
         
         zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
         for el in self.peak_list:
