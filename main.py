@@ -8,7 +8,7 @@ from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
-    file_path='/Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf'
+    file_path='D:/Github/bcf_files/XLI_exhaust_011.bcf'
     # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
     # D:/Github/bcf_files/XLI_exhaust_011.bcf
     
@@ -30,29 +30,29 @@ if __name__ == '__main__':
     
     # Set up the experiment, e.g. determining the model structure
     Ex = Experiment(descriptor='AE_unmix',
-                     general_results_dir=general_results_dir,
-                     model = AutoEncoder, 
-                     model_args={'hidden_layer_sizes':(512,256,128)},
-                     chosen_dataset = dataset_softmax)
+                    general_results_dir=general_results_dir,
+                    model = AutoEncoder, 
+                    model_args={'hidden_layer_sizes':(512,256,128)},
+                    chosen_dataset = dataset_softmax)
     
     # Train the model
-    Ex.run_model(num_epochs=10, 
-                 patience=10, 
+    Ex.run_model(num_epochs=50, 
+                 patience=50, 
                  batch_size=64,
                  learning_rate=1e-4, 
                  weight_decay=0.0, 
-                 task='train_eval',
-                 noise_added=0.02,
+                 task='train_all',
+                 noise_added=0.0,
                  criterion='MSE'
                  )
     
     # Load the trained model file 
-    Ex.load_trained_model('results/2021-10-12_Model-AE_unmix/params/Model-AE_unmix_epoch49')
+    # Ex.load_trained_model('results/2021-10-12_Model-AE_unmix/params/Model-AE_unmix_epoch49')
     latent = Ex.get_latent()
     
     # Set up an object for GM clustering
-    PC = PhaseClassifier(latent, dataset_norm, sem, method='GaussianMixture', 
-                         method_args={'n_components':8,
+    PC = PhaseClassifier(latent, dataset_softmax, sem, method='GaussianMixture', 
+                         method_args={'n_components':12,
                                       'random_state':4})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models

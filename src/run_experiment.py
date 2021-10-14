@@ -148,12 +148,11 @@ class Experiment(object):
             self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         elif self.task == 'train_all':
             self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all')
-            self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
+            # self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         
         #Tracking losses and evaluation results
-        if self.task in ['train_eval', 'train_all']:
-            self.train_loss = np.zeros((self.num_epochs))
-            self.test_loss = np.zeros((self.num_epochs))
+        self.train_loss = np.zeros((self.num_epochs))
+        self.test_loss = np.zeros((self.num_epochs))
             
         #For early stopping
         self.initial_patience = patience
@@ -177,32 +176,39 @@ class Experiment(object):
         print('Start training ...\n')     
          
         start_epoch = 0
-        if self.task in ['train_eval', 'train_all']:
+        if self.task == 'train_eval':
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
                                           shuffle=True)
             test_dataloader = DataLoader(self.dataset_test, batch_size=4096,
                                          shuffle=False)
+        elif self.task == 'train_all':
+            train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
+                                          shuffle=True)
+        
+        for epoch in range(start_epoch, self.num_epochs):  # loop over the dataset multiple times
             
-            for epoch in range(start_epoch, self.num_epochs):  # loop over the dataset multiple times
-                
-                t0 = timeit.default_timer()
-                self.train(train_dataloader, epoch)
+            t0 = timeit.default_timer()
+            self.train(train_dataloader, epoch)
+            
+            if self.task == 'train_eval': 
                 self.test(test_dataloader, epoch)
+            elif self.task == 'train_all':
+                self.scheduler.step(self.train_loss[epoch])
+                self.early_stopping_check(epoch)
                 
-                if self.save_model_every_epoch: 
-                   self.save_model(epoch)
-                   self.save_evals(epoch)
-                    
-                if self.patience_remaining <= 0:
-                    print('No more patience (',self.initial_patience,') left at epoch',epoch)
-                    print('--> Implementing early stopping. Best epoch was:', self.best_valid_epoch)
-                    break
+            if self.save_model_every_epoch: 
+               self.save_model(epoch)
                 
-                t1 = timeit.default_timer()
-                print(f'[{epoch+1:02}/{self.num_epochs:02}]',\
-                       f'train_loss: {self.train_loss[epoch]:.6f},',\
-                       f'test_loss: {self.test_loss[epoch]:.6f},',\
-                       f'time: {round((t1 - t0),1)} sec')
+            if self.patience_remaining <= 0:
+                print('No more patience (',self.initial_patience,') left at epoch',epoch)
+                print('--> Implementing early stopping. Best epoch was:', self.best_valid_epoch)
+                break
+            
+            t1 = timeit.default_timer()
+            print(f'[{epoch+1:02}/{self.num_epochs:02}]',\
+                   f'train_loss: {self.train_loss[epoch]:.6f},',\
+                   f'test_loss: {self.test_loss[epoch]:.6f},',\
+                   f'time: {round((t1 - t0),1)} sec')
                 
         #self.save_final_summary()
     
@@ -224,7 +230,11 @@ class Experiment(object):
     def early_stopping_check(self, epoch):
         """Check whether criteria for early stopping are met and update
         counters accordingly"""
-        test_loss = self.test_loss[epoch]
+        if self.task == 'train_eval':
+            test_loss = self.test_loss[epoch]
+        elif self.task == 'train_all':
+            test_loss = self.train_loss[epoch]
+            
         if (test_loss < self.min_test_loss) or epoch==0: #then save parameters
             self.min_test_loss = test_loss
             if not self.save_model_every_epoch: 
@@ -244,8 +254,8 @@ class Experiment(object):
     def iterate_through_batches(self, model, dataloader, epoch, training):
         epoch_loss = list()
         
-        #Initialize numpy arrays for storing results. examples x labels
-        #Do NOT use concatenation, or else you will have memory fragmentation.   
+        # Initialize numpy arrays for storing results. examples x labels
+        # Do NOT use concatenation, or else you will have memory fragmentation.   
         
         for batch_idx, batch in enumerate(dataloader):
             x = batch.to(self.device)

@@ -58,11 +58,11 @@ class PhaseClassifier(object):
         if method_args['n_components'] <= 10:
             self.color_palette = 'tab10'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
-            self.color = plt.cm.get_cmap('nipy_spectral')(i*0.1)
+            self.color = plt.cm.get_cmap('nipy_spectral')
         else:
             self.color_palette = 'nipy_spectral'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
-            self.color = plt.cm.get_cmap('nipy_spectral')*0.1
+            self.color = plt.cm.get_cmap('nipy_spectral')
             
 
 #################
@@ -254,8 +254,14 @@ class PhaseClassifier(object):
             cbar = fig.colorbar(im,ax=axs[i,0], shrink=0.9, pad=0.025)
             cbar.outline.set_visible(False)
             cbar.ax.tick_params(labelsize=10, size=0)
-    
-            axs[i,1].bar(self.sem.feature_list, mu[i],width=0.6, color = self.color * i)
+            
+            if self.method_args['n_components'] <= 10:
+                axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
+                             color = plt.cm.get_cmap('tab10')(i*0.1))
+            else:
+                axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
+                             color = self.color(i*(1.0/self.method_args['n_components'])))
+                             
             axs[i,1].set_title('Mean value for cluster '+str(i+1))
     
         fig.subplots_adjust(wspace=0.05, hspace=0.2)
@@ -326,9 +332,14 @@ class PhaseClassifier(object):
         axs[2].set_xlim(offset,8)
         axs[2].set_xlabel('Energy axis / keV', fontsize=10)
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
-
-        axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
-                    linewidth=1,color=self.color*cluster_num)
+        
+        if self.method_args['n_components'] <= 10:
+            axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
+                    linewidth=1,color=self.color(cluster_num*0.1))
+        else:
+            axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
+                        linewidth=1,
+                        color=self.color(cluster_num*(1.0/self.method_args['n_components'])))
         
         zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
         for el in self.peak_list:
