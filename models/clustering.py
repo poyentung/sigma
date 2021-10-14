@@ -54,15 +54,26 @@ class PhaseClassifier(object):
         self.peak_list = ['O_Ka','Fe_Ka','Mg_Ka','Ca_Ka', 'Al_Ka', 
                           'C_Ka', 'Si_Ka','S_Ka','Fe_La']
         
+        # Set color for phase visualisation
+        if method_args['n_components'] <= 10:
+            self.color_palette = 'tab10'
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
+            self.color = plt.cm.get_cmap('nipy_spectral')(i*0.1)
+        else:
+            self.color_palette = 'nipy_spectral'
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=10)
+            self.color = plt.cm.get_cmap('nipy_spectral')*0.1
+            
 
 #################
-# Data Analysus #--------------------------------------------------------------
+# Data Analysis #--------------------------------------------------------------
 #################
 
-    def get_binary_map_edx_profile(self, cluster_num=0, threshold=0.8, 
+    def get_binary_map_edx_profile(self, cluster_num=1, threshold=0.8, 
                                    denoise=False,keep_fraction=0.13, 
                                    binary_filter_threshold=0.2):
         
+        cluster_num -= 1
         phase = self.model.predict_proba(self.latent)[:,cluster_num]
         
         if denoise == False:
@@ -180,18 +191,18 @@ class PhaseClassifier(object):
 #################
     
     def plot_latent_space(self, ax=None, save=None, **kwargs):
-        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=200, **kwargs)
+        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=150, **kwargs)
         ax = axs or plt.gca()
         label = self.model.predict(self.latent)
         
         ax.scatter(self.latent[:, 0], self.latent[:, 1], 
                    c=label, s=1., zorder=2,alpha=.15,
-                   linewidths=0, cmap='tab10',
-                   norm=mpl.colors.Normalize(vmin=0, vmax=10))
+                   linewidths=0, cmap=self.color_palette,
+                   norm=self.color_norm)
         
         ax.axis('equal')
-        ax.set_xlim(-4,4)
-        ax.set_ylim(-4,4)
+        # ax.set_xlim(-4,4)
+        # ax.set_ylim(-4,4)
         
         for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
             self.draw_ellipse(pos, covar, alpha= 0.12, facecolor='slategrey', zorder=-10)
@@ -244,7 +255,7 @@ class PhaseClassifier(object):
             cbar.outline.set_visible(False)
             cbar.ax.tick_params(labelsize=10, size=0)
     
-            axs[i,1].bar(self.sem.feature_list, mu[i],width=0.6, color=plt.cm.get_cmap('tab10')(i*0.1))
+            axs[i,1].bar(self.sem.feature_list, mu[i],width=0.6, color = self.color * i)
             axs[i,1].set_title('Mean value for cluster '+str(i+1))
     
         fig.subplots_adjust(wspace=0.05, hspace=0.2)
@@ -266,7 +277,8 @@ class PhaseClassifier(object):
         axs[0].set_title('BSE')
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
-        axs[1].imshow(phase,cmap='tab10',interpolation='none',norm=mpl.colors.Normalize(vmin=0, vmax=10),alpha=0.75)
+        axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
+                      norm=self.color_norm, alpha=0.75)
         axs[1].set_title('Phase map')
     
         fig.subplots_adjust(wspace=0.05, hspace=0.)
@@ -316,7 +328,7 @@ class PhaseClassifier(object):
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
 
         axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
-                    linewidth=1,color=sns.color_palette()[cluster_num])
+                    linewidth=1,color=self.color*cluster_num)
         
         zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
         for el in self.peak_list:

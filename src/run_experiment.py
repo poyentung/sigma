@@ -200,8 +200,8 @@ class Experiment(object):
                 
                 t1 = timeit.default_timer()
                 print(f'[{epoch+1:02}/{self.num_epochs:02}]',\
-                       f'train_loss: {self.train_loss[epoch]:.3f},',\
-                       f'test_loss: {self.test_loss[epoch]:.3f},',\
+                       f'train_loss: {self.train_loss[epoch]:.6f},',\
+                       f'test_loss: {self.test_loss[epoch]:.6f},',\
                        f'time: {round((t1 - t0),1)} sec')
                 
         #self.save_final_summary()
@@ -231,7 +231,7 @@ class Experiment(object):
                 self.save_model(epoch) 
             self.best_valid_epoch = epoch
             self.patience_remaining = self.initial_patience
-            print(f'model saved, test_loss = {test_loss:.3f}')
+            print(f'model saved, test_loss = {test_loss:.6f}')
         else:
             self.patience_remaining -= 1
     
