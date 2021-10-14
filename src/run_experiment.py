@@ -32,7 +32,7 @@ warnings.filterwarnings('ignore')
 
 class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 model:torch, model_args:dict, chosen_dataset:np):
+                 model:torch, model_args:dict, chosen_dataset:np, noise_added=0.03):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -100,6 +100,7 @@ class Experiment(object):
         self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
                                                         verbose=True, patience = 5, 
                                                         threshold=1e-2, min_lr=1e-7)
+        self.noise_lambda = noise_added
         
     ### Methods ###
     def set_up_results_dirs(self):
@@ -143,6 +144,7 @@ class Experiment(object):
             self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         elif self.task == 'train_all':
             self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all')
+            self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         
         #Tracking losses and evaluation results
         if self.task in ['train_eval', 'train_all']:
@@ -241,7 +243,8 @@ class Experiment(object):
             
             self.optimizer.zero_grad()
             if training:
-                recon_x = model(x)
+                noise = self.noise_lambda*torch.randn(size=x.size()).to(device)
+                recon_x = model(x+noise)
             else:
                 with torch.set_grad_enabled(False):
                    recon_x = model(x)
