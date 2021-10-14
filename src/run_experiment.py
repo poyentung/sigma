@@ -97,9 +97,6 @@ class Experiment(object):
                            **model_args)
         self.model.to(self.device)
         self.optimizer = Adam(self.model.parameters())
-        self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
-                                                        verbose=True, patience = 5, 
-                                                        threshold=1e-2, min_lr=1e-7)
         self.noise_lambda = 0.00
         
     ### Methods ###
@@ -124,9 +121,13 @@ class Experiment(object):
         
     def run_model(self, num_epochs:int, patience:int, batch_size:int,
                  learning_rate=1e-4, weight_decay=0.0, task='train_eval',
-                 noise_added=None): 
+                 noise_added=None, criterion='MSE'): 
         
-        self.criterion = nn.MSELoss() 
+        if criterion=='MSE':
+            self.criterion = nn.MSELoss() 
+        elif criterion=='BCE':   
+            self.criterion = nn.BCELoss() 
+            
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.num_epochs = num_epochs
@@ -164,6 +165,11 @@ class Experiment(object):
         self.optimizer = Adam(self.model.parameters(), 
                               lr=self.learning_rate, 
                               weight_decay=self.weight_decay)
+        
+        
+        self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
+                                           verbose=True, patience = 5, 
+                                           threshold=1e-2, min_lr=1e-7)
         
         print(f'optimizer: lr={str(self.learning_rate)}',
               f'and weight_decay={str(self.weight_decay)}\n')

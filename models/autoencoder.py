@@ -29,11 +29,12 @@ class AutoEncoder(nn.Module):
         decoder = building_block(2, self.hls[-1])
         for i in range(len(self.hls)-1,0,-1):
             decoder += building_block(self.hls[i], self.hls[i-1])
-        decoder += [nn.Linear(self.hls[0],self.in_channel)]
+        decoder += [nn.Linear(self.hls[0],self.in_channel),
+                    nn.Softmax()]
 
         self.encoder = nn.Sequential(*encoder)
         self.decoder = nn.Sequential(*decoder)
-        
+
         self.apply(weights_init)
     
     def _encode(self, x):

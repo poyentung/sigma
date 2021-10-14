@@ -91,13 +91,6 @@ def intensity_normalisation(dataset:np) -> np:
     dataset_norm = dataset_norm / dataset_norm.sum(axis=2, keepdims=True)
     return dataset_norm
 
-def z_score_normalisation(dataset:np) -> np:
-    dataset_norm = dataset.copy()
-    for i in range(dataset_norm.shape[2]):
-        mean = dataset_norm[:,:,i].mean()
-        std = dataset_norm[:,:,i].std()
-        dataset_norm[:,:,i] = (dataset_norm[:,:,i] - mean) / std
-    return dataset_norm
         
 def avgerage_neighboring_signal(dataset:np) -> np:
     h, w = dataset.shape[0],  dataset.shape[1]   
@@ -128,6 +121,24 @@ def avgerage_neighboring_signal(dataset:np) -> np:
             new_dataset[row,col,:] = background_signal_avg
          
     return new_dataset
+
+
+def z_score_normalisation(dataset:np) -> np:
+    dataset_norm = dataset.copy()
+    for i in range(dataset_norm.shape[2]):
+        mean = dataset_norm[:,:,i].mean()
+        std = dataset_norm[:,:,i].std()
+        dataset_norm[:,:,i] = (dataset_norm[:,:,i] - mean) / std
+    return dataset_norm
+
+
+def softmax(dataset:np) -> np:
+    exp_dataset = np.exp(dataset)
+    sum_exp = np.sum(exp_dataset,axis=2)
+    sum_exp = np.expand_dims(sum_exp,axis=2)
+    sum_exp = np.tile(sum_exp, (1,1,dataset.shape[2]))
+    softmax_out = exp_dataset / sum_exp
+    return softmax_out
 
 
 #################
@@ -180,18 +191,19 @@ def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
     dataset = sem.get_feature_maps()
     dataset_avg = avgerage_neighboring_signal(dataset)
     dataset_ins = z_score_normalisation(dataset_avg) 
+    dataset_softmax = softmax(dataset_ins)
     
-    dataset_list= [dataset, dataset_avg, dataset_ins]
-    dataset_lable=['Original', 'Neighbour Intensity Averging', 'Z-score Normalisation']
+    dataset_list= [dataset, dataset_avg, dataset_ins, dataset_softmax]
+    dataset_lable=['Original', 'Neighbour Intensity Averging', 'Z-score Normalisation', 'Softmax']
     
     formatter = mpl.ticker.ScalarFormatter(useMathText=True)
     formatter.set_scientific(True) 
     formatter.set_powerlimits((-1,1)) 
 
-    fig, axs = plt.subplots(2,3, figsize=(10,5), dpi=100, gridspec_kw={'height_ratios': [2, 1.5]})
+    fig, axs = plt.subplots(2,len(dataset_list), figsize=(3*len(dataset_list),5), dpi=150, gridspec_kw={'height_ratios': [2, 1.5]})
     #fig.suptitle(f'Intensity Distribution of {feature_list[idx]}', y = .93)
     
-    for i in range(3):
+    for i in range(len(dataset_list)):
         dataset = dataset_list[i]
         im = axs[0,i].imshow(dataset[:,:,idx].round(2),cmap='viridis')
         axs[0,i].set_aspect('equal')
@@ -202,7 +214,7 @@ def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
         cbar.outline.set_visible(False)
         cbar.ax.tick_params(labelsize=10, size=0)
     
-    for j in range(3):
+    for j in range(len(dataset_list)):
         dataset = dataset_list[j]
         sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], bins=50, **kwargs)
         
