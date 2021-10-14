@@ -32,7 +32,7 @@ warnings.filterwarnings('ignore')
 
 class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 model:torch, model_args:dict, chosen_dataset:np, noise_added=0.03):
+                 model:torch, model_args:dict, chosen_dataset:np):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -100,7 +100,7 @@ class Experiment(object):
         self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
                                                         verbose=True, patience = 5, 
                                                         threshold=1e-2, min_lr=1e-7)
-        self.noise_lambda = noise_added
+        self.noise_lambda = 0.00
         
     ### Methods ###
     def set_up_results_dirs(self):
@@ -123,7 +123,8 @@ class Experiment(object):
         
         
     def run_model(self, num_epochs:int, patience:int, batch_size:int,
-                 learning_rate=1e-4, weight_decay=0.0, task='train_eval'): 
+                 learning_rate=1e-4, weight_decay=0.0, task='train_eval',
+                 noise_added=None): 
         
         self.criterion = nn.MSELoss() 
         self.learning_rate = learning_rate
@@ -132,6 +133,8 @@ class Experiment(object):
         print(f'num_epochs: {self.num_epochs}')
         self.batch_size = batch_size
         print(f'batch_size: {self.batch_size}')
+        
+        if noise_added is not None: self.noise_lambda=noise_added
         
         #Set Task
         self.task = task
@@ -171,7 +174,7 @@ class Experiment(object):
         if self.task in ['train_eval', 'train_all']:
             train_dataloader = DataLoader(self.dataset_train, batch_size=self.batch_size,
                                           shuffle=True)
-            test_dataloader = DataLoader(self.dataset_test, batch_size=self.batch_size,
+            test_dataloader = DataLoader(self.dataset_test, batch_size=4096,
                                          shuffle=False)
             
             for epoch in range(start_epoch, self.num_epochs):  # loop over the dataset multiple times
@@ -243,7 +246,7 @@ class Experiment(object):
             
             self.optimizer.zero_grad()
             if training:
-                noise = self.noise_lambda*torch.randn(size=x.size()).to(device)
+                noise = self.noise_lambda*torch.randn(size=x.size()).to(self.device)
                 recon_x = model(x+noise)
             else:
                 with torch.set_grad_enabled(False):

@@ -86,6 +86,11 @@ def peak_denoising_PCA(edx:EDSSEMSpectrum,
     return edx_denoised
 
 
+def intensity_normalisation(dataset:np) -> np:
+    dataset_norm = dataset.copy()
+    dataset_norm = dataset_norm / dataset_norm.sum(axis=2, keepdims=True)
+    return dataset_norm
+
 def z_score_normalisation(dataset:np) -> np:
     dataset_norm = dataset.copy()
     for i in range(dataset_norm.shape[2]):
