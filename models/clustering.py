@@ -259,7 +259,7 @@ class PhaseClassifier(object):
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
                              color = plt.cm.get_cmap(self.color_palette)(i*(self.method_args['n_components']-1)**-1))
                              
-            axs[i,1].set_title('Mean value for cluster '+str(i+1))
+            axs[i,1].set_title('Mean value for cluster '+str(i))
     
         fig.subplots_adjust(wspace=0.05, hspace=0.2)
         plt.show()
