@@ -22,9 +22,6 @@ def same_seeds(seed):
     random.seed(seed)  # Python random module.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    
-# Fix random seed 
-same_seeds(1)
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -121,7 +118,10 @@ class Experiment(object):
         
     def run_model(self, num_epochs:int, patience:int, batch_size:int,
                  learning_rate=1e-4, weight_decay=0.0, task='train_eval',
-                 noise_added=None, criterion='MSE'): 
+                 noise_added=None, criterion='MSE', 
+                 lr_scheduler_args = {'factor':0.5, 'verbose':True, 
+                                      'patience':5,'threshold':1e-2, 
+                                      'min_lr':1e-7,}): 
         
         if criterion=='MSE':
             self.criterion = nn.MSELoss() 
@@ -135,7 +135,7 @@ class Experiment(object):
         self.batch_size = batch_size
         print(f'batch_size: {self.batch_size}')
         
-        if noise_added is not None: self.noise_lambda=noise_added
+        self.noise = noise_added
         
         #Set Task
         self.task = task
@@ -144,10 +144,10 @@ class Experiment(object):
         
         #Data 
         if self.task == 'train_eval':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'train')
+            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'train', self.noise)
             self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         elif self.task == 'train_all':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all')
+            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all', self.noise)
             # self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         
         #Tracking losses and evaluation results
@@ -166,9 +166,7 @@ class Experiment(object):
                               weight_decay=self.weight_decay)
         
         
-        self.scheduler = ReduceLROnPlateau(self.optimizer, factor=0.5, 
-                                           verbose=True, patience = 5, 
-                                           threshold=1e-2, min_lr=1e-7)
+        self.scheduler = ReduceLROnPlateau(self.optimizer, **lr_scheduler_args)
         
         print(f'optimizer: lr={str(self.learning_rate)}',
               f'and weight_decay={str(self.weight_decay)}\n')
@@ -262,8 +260,7 @@ class Experiment(object):
             
             self.optimizer.zero_grad()
             if training:
-                noise = self.noise_lambda*torch.randn(size=x.size()).to(self.device)
-                recon_x = model(x+noise)
+                recon_x = model(x)
             else:
                 with torch.set_grad_enabled(False):
                    recon_x = model(x)

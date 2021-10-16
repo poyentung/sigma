@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 
 class FeatureDataset(Dataset):
-    def __init__(self, dataset:np, setname:str):
+    def __init__(self, dataset:np, setname:str, noise=None):
         
         if len(dataset.shape) != 2:
             dataset = dataset.reshape(-1, dataset.shape[-1])
@@ -23,10 +23,17 @@ class FeatureDataset(Dataset):
         
         elif setname == 'all':
             self.dataset = dataset
+            
+        self.std = self.dataset.std(axis=0)
+        self.noise = noise
         
 
     def __len__(self):
         return self.dataset.shape[0]
     
     def __getitem__(self, idx):
-        return torch.Tensor(self.dataset[idx])
+        if self.noise is not None:
+            out = self.dataset[idx] + np.random.normal(0, (self.noise*self.std)**2)
+            return torch.Tensor(out)
+        else:
+            return torch.Tensor(self.dataset[idx])

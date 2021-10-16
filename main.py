@@ -8,6 +8,9 @@ from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
+    # Fix random seed 
+    same_seeds(1)
+    
     file_path='D:/Github/bcf_files/XLI_exhaust_011.bcf'
     # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
     # D:/Github/bcf_files/XLI_exhaust_011.bcf
@@ -32,7 +35,7 @@ if __name__ == '__main__':
     Ex = Experiment(descriptor='AE_unmix',
                     general_results_dir=general_results_dir,
                     model = AutoEncoder, 
-                    model_args={'hidden_layer_sizes':(512,256,128)},
+                    model_args={'hidden_layer_sizes':(128,64,32)},
                     chosen_dataset = dataset_softmax)
     
     # Train the model
@@ -43,7 +46,11 @@ if __name__ == '__main__':
                  weight_decay=0.0, 
                  task='train_all',
                  noise_added=0.0,
-                 criterion='MSE'
+                 criterion='MSE',
+                 lr_scheduler_args={'factor':0.5,
+                                    'patience':5, 
+                                    'threshold':1e-2, 
+                                    'min_lr':1e-7}
                  )
     
     # Load the trained model file 
