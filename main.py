@@ -31,11 +31,12 @@ if __name__ == '__main__':
     
     general_results_dir='results'
     
+    
     # Set up the experiment, e.g. determining the model structure
     Ex = Experiment(descriptor='AE_unmix',
                     general_results_dir=general_results_dir,
                     model = AutoEncoder, 
-                    model_args={'hidden_layer_sizes':(128,64,32)},
+                    model_args={'hidden_layer_sizes':(512,256,128)},
                     chosen_dataset = dataset_softmax)
     
     # Train the model
@@ -50,7 +51,8 @@ if __name__ == '__main__':
                  lr_scheduler_args={'factor':0.5,
                                     'patience':5, 
                                     'threshold':1e-2, 
-                                    'min_lr':1e-7}
+                                    'min_lr':1e-7,
+                                    'verbose':True}
                  )
     
     # Load the trained model file 
@@ -58,9 +60,10 @@ if __name__ == '__main__':
     latent = Ex.get_latent()
     
     # Set up an object for GM clustering
-    PC = PhaseClassifier(latent, dataset_softmax, sem, method='GaussianMixture', 
+    PC = PhaseClassifier(latent, dataset_softmax, sem, 
+                         method='BayesianGaussianMixture', 
                          method_args={'n_components':12,
-                                      'random_state':3})
+                                      'random_state':4})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models
     PC.plot_latent_space()
@@ -73,16 +76,16 @@ if __name__ == '__main__':
     
     # Given a cluster, plot the binary map and the x-ray profile from the corresponding
     # pixels in the binary map.
-    PC.plot_binary_map_edx_profile(cluster_num=1, 
-                                   binary_filter_args={'threshold':0.6, 
+    PC.plot_binary_map_edx_profile(cluster_num=10, 
+                                   binary_filter_args={'threshold':0.8, 
                                                        'denoise':False, 
                                                        'keep_fraction':0.13, 
-                                                       'binary_filter_threshold':0.2},
+                                                       'binary_filter_threshold':0.5},
                                     save=None)
     
     # Given a cluster, output a pandas dataframe containing statistical information
-    stat_info = PC.phase_statics(cluster_num=1,element_peaks=['Fe_Ka', 'O_Ka'],
-                                 binary_filter_args={'threshold':0.6, 
+    stat_info = PC.phase_statics(cluster_num=10,element_peaks=['Fe_Ka', 'O_Ka'],
+                                 binary_filter_args={'threshold':0.8, 
                                                        'denoise':False, 
                                                        'keep_fraction':0.13, 
                                                        'binary_filter_threshold':0.2})

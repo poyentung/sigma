@@ -13,7 +13,7 @@ class FeatureDataset(Dataset):
         
         # split train/test set if in training mode
         assert setname in ['train','test', 'all']
-        train_data, test_data = train_test_split(dataset, test_size=0.1,
+        train_data, test_data = train_test_split(dataset, test_size=0.2,
                                                  random_state=42)
         if setname == 'train':
             self.dataset = train_data

@@ -7,8 +7,8 @@ from load_dataset.exhaust import SEMDataset
 
 import numpy as np
 import pandas as pd
-from sklearn.mixture import GaussianMixture
-from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+from sklearn.cluster import KMeans, Birch
 from scipy import ndimage as ndi
 from sklearn.cluster import MeanShift
 from skimage import io, img_as_float, measure
@@ -45,6 +45,16 @@ class PhaseClassifier(object):
         
         if self.method == 'GaussianMixture':
             self.model = GaussianMixture(**method_args).fit(self.latent)
+            self.n_components = self.method_args['n_components']
+        elif self.method == 'BayesianGaussianMixture':
+            self.model = BayesianGaussianMixture(**method_args).fit(self.latent)
+            self.n_components = self.method_args['n_components']
+        elif self.method == 'Kmeans':
+            self.model = KMeans(**method_args).fit(self.latent)
+            self.n_components = self.method_args['n_clusters']
+        elif self.method == 'Birch':
+            self.model = Birch(**method_args).partial_fit(self.latent)
+            self.n_components = self.method_args['n_clusters']
             
         self.peak_dict = {'Al_Ka': 1.49, 'C_Ka' : 0.28, 'Ca_Ka': 3.69,
                           'Cr_Ka': 5.41, 'Fe_Ka': 6.40, 'Fe_La': 0.70, 
@@ -55,12 +65,12 @@ class PhaseClassifier(object):
                           'C_Ka', 'Si_Ka','S_Ka','Fe_La']
         
         # Set color for phase visualisation
-        if method_args['n_components'] <= 10:
+        if self.n_components <= 10:
             self.color_palette = 'tab10'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=9)
         else:
-            self.color_palette = 'jet'
-            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.method_args['n_components']-1)
+            self.color_palette = 'nipy_spectral'
+            self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.n_components-1)
             
 
 #################
@@ -198,11 +208,9 @@ class PhaseClassifier(object):
                    norm=self.color_norm)
         
         ax.axis('equal')
-        # ax.set_xlim(-4,4)
-        # ax.set_ylim(-4,4)
-        
-        for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
-            self.draw_ellipse(pos, covar, alpha= 0.12, facecolor='slategrey', zorder=-10)
+        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+            for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
+                self.draw_ellipse(pos, covar, alpha= 0.12, facecolor='slategrey', zorder=-10)
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
     
@@ -226,25 +234,30 @@ class PhaseClassifier(object):
                                  angle, **kwargs))
     
     def plot_phase_distribution(self, save=None, **kwargs):
-        n_component = self.model.n_components
         labels = self.model.predict(self.latent)
         means = []
         dataset_ravel = self.dataset.reshape(-1,self.dataset.shape[2])
-        for i in range(n_component):
+        for i in range(self.n_components):
             mean = dataset_ravel[np.where(labels==i)[0]].mean(axis=0)
             means.append(mean.reshape(1,-1))
         mu = np.concatenate(means,axis=0)
-        prob_map = self.model.predict_proba(self.latent)
+        
+        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+            prob_map = self.model.predict_proba(self.latent)
     
-        fig, axs = plt.subplots(n_component, 2, figsize=(14, n_component*4.2),dpi=96, **kwargs)
+        fig, axs = plt.subplots(self.n_components, 2, figsize=(14, self.n_components*4.2),dpi=96, **kwargs)
         fig.subplots_adjust(hspace=0.35, wspace=0.1)
         
         formatter = mpl.ticker.ScalarFormatter(useMathText=True)
         formatter.set_scientific(True) 
         formatter.set_powerlimits((-1,1))
         
-        for i in range(n_component):
-            im=axs[i,0].imshow(prob_map[:,i].reshape(self.height, self.width), cmap='viridis')
+        for i in range(self.n_components):
+            if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+                prob_map_i = prob_map[:,i]
+            else:
+                prob_map_i = np.where(labels==i,1,0)
+            im=axs[i,0].imshow(prob_map_i.reshape(self.height, self.width), cmap='viridis')
             axs[i,0].set_title('Probability of each pixel for cluster '+str(i))
             
             axs[i,0].axis('off')
@@ -252,12 +265,12 @@ class PhaseClassifier(object):
             cbar.outline.set_visible(False)
             cbar.ax.tick_params(labelsize=10, size=0)
             
-            if self.method_args['n_components'] <= 10:
+            if self.n_components <= 10:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
                              color = plt.cm.get_cmap(self.color_palette)(i*0.1))
             else:
                 axs[i,1].bar(self.sem.feature_list, mu[i], width=0.6, 
-                             color = plt.cm.get_cmap(self.color_palette)(i*(self.method_args['n_components']-1)**-1))
+                             color = plt.cm.get_cmap(self.color_palette)(i*(self.n_components-1)**-1))
                              
             axs[i,1].set_title('Mean value for cluster '+str(i))
     
@@ -281,7 +294,7 @@ class PhaseClassifier(object):
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
         
-        if self.method_args['n_components'] <= 10:
+        if self.n_components <= 10:
             axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
                           norm=self.color_norm, alpha=0.75)
         else:
@@ -336,13 +349,13 @@ class PhaseClassifier(object):
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
         
-        if self.method_args['n_components'] <= 10:
+        if self.n_components <= 10:
             axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
                     linewidth=1,color=plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
         else:
             axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
                         linewidth=1,
-                        color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.method_args['n_components']-1)**-1))
+                        color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
         
         zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
         for el in self.peak_list:

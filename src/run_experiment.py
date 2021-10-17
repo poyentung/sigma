@@ -83,6 +83,7 @@ class Experiment(object):
         self.general_results_dir = general_results_dir
         self.set_up_results_dirs() #Results dirs for output files and saved models
         self.chosen_dataset = chosen_dataset
+        print(f'size_dataset: {self.chosen_dataset.shape}')
         self.save_model_every_epoch=False
         
         #Set Device

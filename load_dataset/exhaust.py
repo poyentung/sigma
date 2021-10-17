@@ -200,7 +200,7 @@ def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
     formatter.set_scientific(True) 
     formatter.set_powerlimits((-1,1)) 
 
-    fig, axs = plt.subplots(2,len(dataset_list), figsize=(3*len(dataset_list),5), dpi=150, gridspec_kw={'height_ratios': [2, 1.5]})
+    fig, axs = plt.subplots(2,len(dataset_list), figsize=(4*len(dataset_list),6), dpi=150, gridspec_kw={'height_ratios': [2, 1.5]})
     #fig.suptitle(f'Intensity Distribution of {feature_list[idx]}', y = .93)
     
     for i in range(len(dataset_list)):
