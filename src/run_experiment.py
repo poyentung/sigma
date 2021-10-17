@@ -29,7 +29,8 @@ warnings.filterwarnings('ignore')
 
 class Experiment(object):
     def __init__(self, descriptor:str, general_results_dir:str,
-                 model:torch, model_args:dict, chosen_dataset:np):
+                 model:torch, model_args:dict, chosen_dataset:np,
+                 save_model_every_epoch=False):
         
         """Variables:
         <descriptor>: string describing the experiment. This descriptor will
@@ -84,7 +85,7 @@ class Experiment(object):
         self.set_up_results_dirs() #Results dirs for output files and saved models
         self.chosen_dataset = chosen_dataset
         print(f'size_dataset: {self.chosen_dataset.shape}')
-        self.save_model_every_epoch=False
+        self.save_model_every_epoch=save_model_every_epoch
         
         #Set Device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -234,7 +235,7 @@ class Experiment(object):
         elif self.task == 'train_all':
             test_loss = self.train_loss[epoch]
             
-        if (test_loss < self.min_test_loss) or epoch==0: #then save parameters
+        if (test_loss < self.min_test_loss) or epoch==0 or epoch==self.num_epochs-1: #then save parameters
             self.min_test_loss = test_loss
             if not self.save_model_every_epoch: 
                 self.save_model(epoch) 
@@ -246,7 +247,9 @@ class Experiment(object):
     
     def save_model(self, epoch):
         check_point = {'params': self.model.state_dict(),                            
-                       'optimizer': self.optimizer.state_dict()}
+                       'optimizer': self.optimizer.state_dict(),
+                       'train_loss':self.train_loss,
+                       'test_loss':self.test_loss}
         torch.save(check_point, os.path.join(self.params_dir, self.descriptor+'_epoch'+str(epoch)))
             
     
@@ -285,6 +288,8 @@ class Experiment(object):
         check_point = torch.load(self.old_model_path)
         self.model.load_state_dict(check_point['params'])
         self.optimizer.load_state_dict(check_point['optimizer'])
+        self.train_loss = check_point['train_loss']
+        self.test_loss = check_point['test_loss']
         
         
     def get_latent(self) -> np:
@@ -301,21 +306,4 @@ class Experiment(object):
         
         return np.concatenate(latents, axis=0)
 
-            
-       
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             

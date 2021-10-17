@@ -37,7 +37,8 @@ if __name__ == '__main__':
                     general_results_dir=general_results_dir,
                     model = AutoEncoder, 
                     model_args={'hidden_layer_sizes':(512,256,128)},
-                    chosen_dataset = dataset_softmax)
+                    chosen_dataset = dataset_softmax,
+                    save_model_every_epoch=True)
     
     # Train the model
     Ex.run_model(num_epochs=50, 
