@@ -240,7 +240,7 @@ class Experiment(object):
                 self.save_model(epoch) 
             self.best_valid_epoch = epoch
             self.patience_remaining = self.initial_patience
-            print(f'model saved, test_loss = {test_loss:.6f}')
+            print(f'Epoch {epoch} ----> model saved, test_loss = {test_loss:.6f}')
         else:
             self.patience_remaining -= 1
     
