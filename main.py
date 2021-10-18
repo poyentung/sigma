@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from src.run_experiment import Experiment
+from src.run_experiment import Experiment, same_seeds
 from models.autoencoder import AutoEncoder
 from models.clustering import PhaseClassifier
 from load_dataset.exhaust import *
@@ -8,8 +8,6 @@ from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
-    # Fix random seed 
-    same_seeds(1)
     
     file_path='D:/Github/bcf_files/XLI_exhaust_011.bcf'
     # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
@@ -32,11 +30,14 @@ if __name__ == '__main__':
     general_results_dir='results'
     
     
+    # Fix random seed 
+    same_seeds(1)
+    
     # Set up the experiment, e.g. determining the model structure
     Ex = Experiment(descriptor='AE_unmix',
                     general_results_dir=general_results_dir,
                     model = AutoEncoder, 
-                    model_args={'hidden_layer_sizes':(512,256,128)},
+                    model_args={'hidden_layer_sizes':(32,16,8,4)},
                     chosen_dataset = dataset_softmax,
                     save_model_every_epoch=True)
     
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     PC = PhaseClassifier(latent, dataset_softmax, sem, 
                          method='BayesianGaussianMixture', 
                          method_args={'n_components':12,
-                                      'random_state':4})
+                                      'random_state':5})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models
     PC.plot_latent_space()
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     
     # Given a cluster, plot the binary map and the x-ray profile from the corresponding
     # pixels in the binary map.
-    PC.plot_binary_map_edx_profile(cluster_num=10, 
+    PC.plot_binary_map_edx_profile(cluster_num=10,
                                    binary_filter_args={'threshold':0.8, 
                                                        'denoise':False, 
                                                        'keep_fraction':0.13, 

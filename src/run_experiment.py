@@ -94,6 +94,7 @@ class Experiment(object):
         #Set Model
         self.model = model(in_channel=self.chosen_dataset[0].shape[-1],
                            **model_args)
+        print('num_parameters:',sum(p.numel() for p in self.model.parameters()))
         self.model.to(self.device)
         self.optimizer = Adam(self.model.parameters())
         self.noise_lambda = 0.00
@@ -250,7 +251,7 @@ class Experiment(object):
                        'optimizer': self.optimizer.state_dict(),
                        'train_loss':self.train_loss,
                        'test_loss':self.test_loss}
-        torch.save(check_point, os.path.join(self.params_dir, self.descriptor+'_epoch'+str(epoch)))
+        torch.save(check_point, os.path.join(self.params_dir, self.descriptor+f'_epoch{epoch:03}'))
             
     
     def iterate_through_batches(self, model, dataloader, epoch, training):
@@ -288,8 +289,9 @@ class Experiment(object):
         check_point = torch.load(self.old_model_path)
         self.model.load_state_dict(check_point['params'])
         self.optimizer.load_state_dict(check_point['optimizer'])
-        self.train_loss = check_point['train_loss']
-        self.test_loss = check_point['test_loss']
+        if 'train_loss' in check_point.keys():
+            self.train_loss = check_point['train_loss']
+            self.test_loss = check_point['test_loss']
         
         
     def get_latent(self) -> np:
