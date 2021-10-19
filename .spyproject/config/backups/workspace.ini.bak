@@ -4,9 +4,9 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = empty-project-type
-recent_files = ['main.py', 'models\\clustering.py']
+recent_files = ['models\\autoencoder.py', 'models\\clustering.py', 'src\\utils.py', 'src\\run_experiment.py', 'main.py']
 
 [main]
 version = 0.2.0
-recent_files = []
+recent_files = ['main.py', 'src/run_experiment.py', 'models/clustering.py']
 

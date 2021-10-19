@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import matplotlib.patches as patches
 from matplotlib.patches import Ellipse
+from  matplotlib import gridspec
 import seaborn as sns
 
 class PhaseClassifier(object):
@@ -207,7 +208,7 @@ class PhaseClassifier(object):
                    linewidths=0, cmap=self.color_palette,
                    norm=self.color_norm)
         
-        ax.axis('equal')
+        # ax.axis('equal')
         if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
             for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
                 self.draw_ellipse(pos, covar, alpha= 0.12, facecolor='slategrey', zorder=-10)
@@ -279,6 +280,7 @@ class PhaseClassifier(object):
         
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
+    
     
     
     

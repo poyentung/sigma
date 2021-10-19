@@ -12,6 +12,8 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 def same_seeds(seed):
     torch.manual_seed(seed)
@@ -121,7 +123,7 @@ class Experiment(object):
         
     def run_model(self, num_epochs:int, patience:int, batch_size:int,
                  learning_rate=1e-4, weight_decay=0.0, task='train_eval',
-                 noise_added=None, criterion='MSE', 
+                 noise_added=None, criterion='MSE', print_latent=False,
                  lr_scheduler_args = {'factor':0.5, 'verbose':True, 
                                       'patience':5,'threshold':1e-2, 
                                       'min_lr':1e-7,}): 
@@ -139,6 +141,7 @@ class Experiment(object):
         print(f'batch_size: {self.batch_size}')
         
         self.noise = noise_added
+        self.print_latent = print_latent
         
         #Set Task
         self.task = task
@@ -247,13 +250,23 @@ class Experiment(object):
             self.patience_remaining -= 1
     
     def save_model(self, epoch):
+        if self.print_latent:
+            self.plot_latent(epoch)
+            
         check_point = {'params': self.model.state_dict(),                            
                        'optimizer': self.optimizer.state_dict(),
                        'train_loss':self.train_loss,
                        'test_loss':self.test_loss}
         torch.save(check_point, os.path.join(self.params_dir, self.descriptor+f'_epoch{epoch:03}'))
             
-    
+    def plot_latent(self, epoch):
+        latent = self.get_latent()
+        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=100)
+        sns.scatterplot(latent[:,0], latent[:,1],s=0.5,alpha=0.1,ax=axs,color='r')
+        # axs.set_aspect(1)
+        axs.set_title(f'Epoch{epoch+1}')
+        plt.show()
+            
     def iterate_through_batches(self, model, dataloader, epoch, training):
         epoch_loss = list()
         
