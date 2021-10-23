@@ -8,6 +8,16 @@ import itertools
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import seaborn as sns
+import plotly.graph_objects as go
+
+peak_dict = dict()
+for element in hs.material.elements:
+    if element[0]=='Li': continue
+    for character in element[1].Atomic_properties.Xray_lines:
+        peak_name = element[0]
+        char_name = character[0]
+        key = f'{peak_name}_{char_name}'
+        peak_dict[key] = character[1].energy_keV
 
 class SEMDataset(object):
     def __init__(self, file_path:str):
@@ -19,10 +29,17 @@ class SEMDataset(object):
         self.edx_bin = None
         self.bse_bin = None
         
-        self.feature_list = ['O_Ka', 'Fe_Ka', 'Mg_Ka', 'Ca_Ka', 
-                             'Al_Ka', 'C_Ka', 'Si_Ka', 'S_Ka']
+        self.feature_list = self.edx.metadata.Sample.xray_lines
         
         self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
+    
+    def set_feature_list(self, feature_list):
+        self.feature_list = feature_list
+        self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
+        for s in [self.edx, self.edx_bin]:
+            if s is not None:
+                s.metadata.Sample.xray_lines = self.feature_list
+        print(f'Set feature_list as {self.feature_list}')
     
     def rebin_signal(self, size=(2,2)):
         print(f'Rebinning the intensity with the size of {size}')
@@ -31,11 +48,20 @@ class SEMDataset(object):
         self.bse_bin = self.bse.rebin(scale=(x, y))
         return (self.edx_bin, self.bse_bin)
     
+    
+    def remove_fist_peak(self, end:float):
+        print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
+        for edx in (self.edx, self.edx_bin):
+            scale = edx.axes_manager[2].scale
+            offset = edx.axes_manager[2].offset
+            end_ = int((end-offset)/scale)
+            for i in range(end_):
+                edx.isig[i] = 0
+    
     def get_feature_maps(self, feature_list=None) -> np:
         if feature_list is not None:
-            self.feature_list = feature_list
-            self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
-    
+            self.set_feature_list(feature_list)
+            
         num_elements=len(self.feature_list)
         
         if self.edx_bin is not None:
@@ -51,14 +77,18 @@ class SEMDataset(object):
     
         return data_cube
     
+    
 ######################
 # Data Preprocessing #----------------------------------------------------------
 ######################
   
-def remove_fist_peak(edx:EDSSEMSpectrum, range_idx=58) -> EDSSEMSpectrum:
-    print(f'Removing the fisrt peak by setting the first {range_idx} as zero')
+def remove_fist_peak(edx:EDSSEMSpectrum, end=108) -> EDSSEMSpectrum:
+    print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
     edx_cleaned = edx
-    for i in range(range_idx):
+    scale = edx.axes_manager[2].scale
+    offset = edx.axes_manager[2].offset
+    end_ = int((end-offset)/scale)
+    for i in range(end_):
         edx_cleaned.isig[i] = 0
     return edx_cleaned
 
@@ -88,7 +118,7 @@ def peak_denoising_PCA(edx:EDSSEMSpectrum,
 
 def intensity_normalisation(dataset:np) -> np:
     dataset_norm = dataset.copy()
-    dataset_norm = dataset_norm / dataset_norm.sum(axis=2, keepdims=True)
+    dataset_norm = dataset_norm / dataset_norm.sum(axis=2)
     return dataset_norm
 
         
@@ -145,6 +175,41 @@ def softmax(dataset:np) -> np:
 # Visualization #--------------------------------------------------------------
 #################
 
+def plot_sum_spectrum(edx):       
+    size = edx.axes_manager[2].size
+    scale = edx.axes_manager[2].scale
+    offset = edx.axes_manager[2].offset
+    energy_axis = [((a*scale) + offset) for a in range(0,size)]
+    
+    fig = go.Figure(data=go.Scatter(x=energy_axis, y=edx.sum().data),
+                    layout_xaxis_range=[offset,8],
+                    layout=go.Layout(title="EDX Sum Spectrum",
+                                     width=900,
+                                     height=500))
+    
+    feature_list = edx.metadata.Sample.xray_lines
+    zero_energy_idx = np.where(np.array(energy_axis).round(2)==0)[0][0]
+    for el in feature_list:
+        peak = edx.sum().data[zero_energy_idx:][int(peak_dict[el]*100)+1]
+        fig.add_shape(type="line",
+                      x0=peak_dict[el], y0=0, x1=peak_dict[el], y1=int(0.9*peak),
+                      line=dict(color="black",
+                                width=2,
+                                dash="dot")
+                      )
+    
+        fig.add_annotation(x=peak_dict[el], y=peak,
+                           text=el,
+                           showarrow=False,
+                           arrowhead=2,
+                           yshift=30,
+                           textangle=270
+                           )
+    
+    fig.update_layout(showlegend=False)
+    fig.update_layout(template='simple_white')
+    fig.show()
+
 def plot_intensity_maps(edx, element_list, grid_dims=(2,4), save=None):
     cmaps = ['Greys_r', 'Purples_r', 'Blues_r', 'Greens_r', 'Oranges_r', 'Reds_r', 
              'YlOrBr_r', 'YlOrRd_r', 'Blues_r', 'YlOrBr_r', 'Greens_r', 'Reds_r', 
@@ -158,7 +223,7 @@ def plot_intensity_maps(edx, element_list, grid_dims=(2,4), save=None):
       for j in range(ncol):
         el = element_list[(i*ncol)+j]
         el_map = edx.get_lines_intensity([el])[0].data
-        im = axs[i,j].imshow(el_map, cmap=cmaps[(i*ncol)+j])
+        im = axs[i,j].imshow(el_map, cmap='viridis')#cmaps[(i*ncol)+j])
         axs[i,j].set_yticks([])
         axs[i,j].set_xticks([])
         axs[i,j].set_title(el, fontsize=16)

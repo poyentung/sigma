@@ -4,6 +4,7 @@
 import sys
 sys.path.append('../')
 from load_dataset.exhaust import SEMDataset
+import hyperspy.api as hs
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,8 @@ import matplotlib.patches as patches
 from matplotlib.patches import Ellipse
 from  matplotlib import gridspec
 import seaborn as sns
+import plotly.graph_objects as go
+
 
 class PhaseClassifier(object):
     def __init__(self, 
@@ -57,10 +60,14 @@ class PhaseClassifier(object):
             self.model = Birch(**method_args).partial_fit(self.latent)
             self.n_components = self.method_args['n_clusters']
             
-        self.peak_dict = {'Al_Ka': 1.49, 'C_Ka' : 0.28, 'Ca_Ka': 3.69,
-                          'Cr_Ka': 5.41, 'Fe_Ka': 6.40, 'Fe_La': 0.70, 
-                          'Mg_Ka': 1.25, 'N_Ka': 0.39, 'O_Ka': 0.52, 
-                          'P_Ka': 2.01, 'S_Ka': 2.31, 'Si_Ka': 1.74}
+        self.peak_dict = dict()
+        for element in hs.material.elements:
+            if element[0]=='Li': continue
+            for character in element[1].Atomic_properties.Xray_lines:
+                peak_name = element[0]
+                char_name = character[0]
+                key = f'{peak_name}_{char_name}'
+                self.peak_dict[key] = character[1].energy_keV
         
         self.peak_list = ['O_Ka','Fe_Ka','Mg_Ka','Ca_Ka', 'Al_Ka', 
                           'C_Ka', 'Si_Ka','S_Ka','Fe_La']
@@ -131,6 +138,49 @@ class PhaseClassifier(object):
         
         return binary_map, binary_map_indices, edx_profile
     
+    def get_masked_edx(self, cluster_num, threshold=0.8, 
+                       denoise=False,keep_fraction=0.13, 
+                       binary_filter_threshold=0.2, 
+                       **binary_filter_args):
+        
+        phase = self.model.predict_proba(self.latent)[:,cluster_num]
+        
+        if denoise == False:
+            binary_map_indices = np.where(phase.reshape(self.height,self.width)<=threshold)
+        
+        else:
+            filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
+            image_fft = fftpack.fft2(filtered_img)
+            image_fft2 = image_fft.copy()
+            
+            # Set r and c to be the number of rows and columns of the array.
+            r, c = image_fft2.shape
+        
+            # Set to zero all rows with indices between r*keep_fraction and
+            # r*(1-keep_fraction):
+            image_fft2[int(r*keep_fraction):int(r*(1-keep_fraction))] = 0
+        
+            # Similarly with the columns:
+            image_fft2[:, int(c*keep_fraction):int(c*(1-keep_fraction))] = 0
+        
+            # Transformed the filtered image back to real space
+            image_new = fftpack.ifft2(image_fft2).real
+        
+            binary_map_indices = np.where(image_new>binary_filter_threshold)
+            
+        # Get edx profile in the filtered phase region
+        x_id = binary_map_indices[0].reshape(-1,1)
+        y_id = binary_map_indices[1].reshape(-1,1)
+        x_y = np.concatenate([x_id, y_id],axis=1)
+        x_y_indices = tuple(map(tuple, x_y))
+        
+        
+        shape = self.edx.inav[0,0].data.shape
+        masked_edx = self.edx.deepcopy()
+        for x_y_index in x_y_indices:
+            masked_edx.data[x_y_index] = np.zeros(shape)
+        
+        return masked_edx
     
     def phase_statics(self, cluster_num,element_peaks=['Fe_Ka','O_Ka'],binary_filter_args={}):
         """
@@ -230,7 +280,7 @@ class PhaseClassifier(object):
             width, height = 2 * np.sqrt(covariance)
         
         # Draw the Ellipse
-        for nsig in range(1, 4):
+        for nsig in range(1, 3):
             ax.add_patch(Ellipse(position, nsig * width, nsig * height,
                                  angle, **kwargs))
     

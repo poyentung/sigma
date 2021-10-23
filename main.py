@@ -8,7 +8,6 @@ from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
-    
     file_path='/home/tung/Github/bcf_files/XLI_exhaust_011.bcf'
     # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
     # D:/Github/bcf_files/XLI_exhaust_011.bcf
@@ -60,14 +59,14 @@ if __name__ == '__main__':
                  )
     
     # Load the trained model file 
-    Ex.load_trained_model('/home/tung/Github/unmix/results/2021-10-19_Model-AE_unmix/params/Model-AE_unmix_epoch099')
+    Ex.load_trained_model('/home/tung/Github/unmix/results/Model-AE_unmix_best')
     latent = Ex.get_latent()
     
     # Set up an object for GM clustering
     PC = PhaseClassifier(latent, dataset_softmax, sem, 
                          method='BayesianGaussianMixture', 
-                         method_args={'n_components':12,
-                                      'random_state':5})
+                         method_args={'n_components':20,
+                                      'random_state':4})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models
     PC.plot_latent_space()
