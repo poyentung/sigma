@@ -7,6 +7,7 @@ import numpy as np
 import itertools
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+import matplotlib.colors as mcolors
 import seaborn as sns
 import plotly.graph_objects as go
 
@@ -175,7 +176,23 @@ def softmax(dataset:np) -> np:
 # Visualization #--------------------------------------------------------------
 #################
 
-def plot_sum_spectrum(edx):       
+def make_colormap(seq):
+    """Return a LinearSegmentedColormap
+    seq: a sequence of floats and RGB-tuples. The floats should be increasing
+    and in the interval (0,1).
+    """
+    seq = [(None,) * 3, 0.0] + list(seq) + [1.0, (None,) * 3]
+    cdict = {'red': [], 'green': [], 'blue': []}
+    for i, item in enumerate(seq):
+        if isinstance(item, float):
+            r1, g1, b1 = seq[i - 1]
+            r2, g2, b2 = seq[i + 1]
+            cdict['red'].append([item, r1, r2])
+            cdict['green'].append([item, g1, g2])
+            cdict['blue'].append([item, b1, b2])
+    return mcolors.LinearSegmentedColormap('CustomMap', cdict)
+
+def plot_sum_spectrum(edx, xray_lines=True):       
     size = edx.axes_manager[2].size
     scale = edx.axes_manager[2].scale
     offset = edx.axes_manager[2].offset
@@ -184,36 +201,42 @@ def plot_sum_spectrum(edx):
     fig = go.Figure(data=go.Scatter(x=energy_axis, y=edx.sum().data),
                     layout_xaxis_range=[offset,8],
                     layout=go.Layout(title="EDX Sum Spectrum",
+                                     title_x=0.5,
+                                     xaxis_title="Energy / keV",
+                                     yaxis_title="Counts",
                                      width=900,
                                      height=500))
     
-    feature_list = edx.metadata.Sample.xray_lines
-    zero_energy_idx = np.where(np.array(energy_axis).round(2)==0)[0][0]
-    for el in feature_list:
-        peak = edx.sum().data[zero_energy_idx:][int(peak_dict[el]*100)+1]
-        fig.add_shape(type="line",
-                      x0=peak_dict[el], y0=0, x1=peak_dict[el], y1=int(0.9*peak),
-                      line=dict(color="black",
-                                width=2,
-                                dash="dot")
-                      )
-    
-        fig.add_annotation(x=peak_dict[el], y=peak,
-                           text=el,
-                           showarrow=False,
-                           arrowhead=2,
-                           yshift=30,
-                           textangle=270
-                           )
-    
+    if xray_lines:
+        feature_list = edx.metadata.Sample.xray_lines
+        zero_energy_idx = np.where(np.array(energy_axis).round(2)==0)[0][0]
+        for el in feature_list:
+            peak = edx.sum().data[zero_energy_idx:][int(peak_dict[el]*100)+1]
+            fig.add_shape(type="line",
+                          x0=peak_dict[el], y0=0, x1=peak_dict[el], y1=int(0.9*peak),
+                          line=dict(color="black",
+                                    width=2,
+                                    dash="dot")
+                          )
+        
+            fig.add_annotation(x=peak_dict[el], y=peak,
+                               text=el,
+                               showarrow=False,
+                               arrowhead=2,
+                               yshift=30,
+                               textangle=270
+                               )
+        
     fig.update_layout(showlegend=False)
     fig.update_layout(template='simple_white')
     fig.show()
 
 def plot_intensity_maps(edx, element_list, grid_dims=(2,4), save=None):
-    cmaps = ['Greys_r', 'Purples_r', 'Blues_r', 'Greens_r', 'Oranges_r', 'Reds_r', 
-             'YlOrBr_r', 'YlOrRd_r', 'Blues_r', 'YlOrBr_r', 'Greens_r', 'Reds_r', 
-             'Purples_r', 'pink', 'bone', 'viridis']
+    cmaps = []
+    c = mcolors.ColorConverter().to_rgb
+    for i in range(len(element_list)):
+        rvb = make_colormap([c('k'),sns.color_palette('bright')[i], 0.7, sns.color_palette('bright')[i]])
+        cmaps.append(rvb)
     nrow = grid_dims[0]
     ncol = grid_dims[1]
 

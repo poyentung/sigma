@@ -69,8 +69,7 @@ class PhaseClassifier(object):
                 key = f'{peak_name}_{char_name}'
                 self.peak_dict[key] = character[1].energy_keV
         
-        self.peak_list = ['O_Ka','Fe_Ka','Mg_Ka','Ca_Ka', 'Al_Ka', 
-                          'C_Ka', 'Si_Ka','S_Ka','Fe_La']
+        self.peak_list = self.sem.feature_list
         
         # Set color for phase visualisation
         if self.n_components <= 10:

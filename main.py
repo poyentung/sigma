@@ -5,6 +5,9 @@ from models.autoencoder import AutoEncoder
 from models.clustering import PhaseClassifier
 from load_dataset.exhaust import *
 
+# import plotly.io as pio
+# pio.renderers.default='browser'
+
 
 if __name__ == '__main__':
     
