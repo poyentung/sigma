@@ -5,8 +5,8 @@ from models.autoencoder import AutoEncoder
 from models.clustering import PhaseClassifier
 from load_dataset.exhaust import *
 
-# import plotly.io as pio
-# pio.renderers.default='browser'
+import plotly.io as pio
+pio.renderers.default='browser'
 
 
 if __name__ == '__main__':
@@ -17,7 +17,9 @@ if __name__ == '__main__':
     # /home/tung/Github/bcf_files
     
     sem = SEMDataset(file_path)
-        
+    sem.set_feature_list(['O_Ka', 'Fe_Ka', 'Mg_Ka', 'Ca_Ka', 
+                          'Al_Ka', 'C_Ka', 'Si_Ka', 'S_Ka'])
+    
     sem.rebin_signal(size=(2,2))
     remove_fist_peak(sem.edx_bin)
     peak_intensity_normalisation(sem.edx_bin)
@@ -62,13 +64,13 @@ if __name__ == '__main__':
                  )
     
     # Load the trained model file 
-    Ex.load_trained_model('/home/tung/Github/unmix/results/Model-AE_unmix_best')
+    Ex.load_trained_model('results/Model-AE_unmix_best')
     latent = Ex.get_latent()
     
     # Set up an object for GM clustering
     PC = PhaseClassifier(latent, dataset_softmax, sem, 
                          method='BayesianGaussianMixture', 
-                         method_args={'n_components':20,
+                         method_args={'n_components':15,
                                       'random_state':4})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models
@@ -82,17 +84,20 @@ if __name__ == '__main__':
     
     # Given a cluster, plot the binary map and the x-ray profile from the corresponding
     # pixels in the binary map.
+    binary_filter_args={'threshold':0.8, 
+                        'denoise':False, 
+                        'keep_fraction':0.13, 
+                        'binary_filter_threshold':0.5}
     PC.plot_binary_map_edx_profile(cluster_num=10,
-                                   binary_filter_args={'threshold':0.8, 
-                                                       'denoise':False, 
-                                                       'keep_fraction':0.13, 
-                                                       'binary_filter_threshold':0.5},
+                                   binary_filter_args=binary_filter_args,
                                     save=None)
     
     # Given a cluster, output a pandas dataframe containing statistical information
     stat_info = PC.phase_statics(cluster_num=10,element_peaks=['Fe_Ka', 'O_Ka'],
-                                 binary_filter_args={'threshold':0.8, 
-                                                       'denoise':False, 
-                                                       'keep_fraction':0.13, 
-                                                       'binary_filter_threshold':0.2})
+                                 binary_filter_args=binary_filter_args)
+    
+    # Get x-ray energy profiles from all phases
+    W, H = PC.get_unmixed_edx_profile(normalised=True,
+                                      method_args={'init':'nndsvd'},
+                                      binary_filter_args=binary_filter_args)
     

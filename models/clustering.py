@@ -9,6 +9,7 @@ import hyperspy.api as hs
 import numpy as np
 import pandas as pd
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+from sklearn.decomposition import NMF
 from sklearn.cluster import KMeans, Birch
 from scipy import ndimage as ndi
 from sklearn.cluster import MeanShift
@@ -136,6 +137,28 @@ class PhaseClassifier(object):
                                    columns=['energy', 'intensity'])
         
         return binary_map, binary_map_indices, edx_profile
+    
+    def get_all_edx_profile(self, normalised=True, binary_filter_args={}):
+        edx_profiles = []
+        for i in range(self.n_components):
+            _,_,edx_profile = self.get_binary_map_edx_profile(i, **binary_filter_args)
+            edx_profiles.append(edx_profile['intensity'])
+        edx_profiles = np.vstack(edx_profiles)
+        if normalised==True:
+            edx_profiles *= 1/edx_profiles.max(axis=1,keepdims=True)
+        return edx_profiles
+    
+    def get_unmixed_edx_profile(self, normalised=True, method='NMF', 
+                                method_args={},
+                                binary_filter_args={}):
+        assert(method=='NMF')
+        if method == 'NMF':
+            model = NMF(n_components=self.n_components, init='nndsvd', **method_args)
+        
+        edx_profiles = self.get_all_edx_profile(normalised, binary_filter_args)
+        weight = model.fit_transform(edx_profiles)
+        components = model.components_
+        return weight, components
     
     def get_masked_edx(self, cluster_num, threshold=0.8, 
                        denoise=False,keep_fraction=0.13, 
