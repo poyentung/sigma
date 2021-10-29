@@ -83,7 +83,11 @@ class SEMDataset(object):
 # Data Preprocessing #----------------------------------------------------------
 ######################
   
+<<<<<<< HEAD
 def remove_fist_peak(edx:EDSSEMSpectrum, end=0.1197) -> EDSSEMSpectrum:
+=======
+def remove_fist_peak(edx:EDSSEMSpectrum, end=0.01197) -> EDSSEMSpectrum:
+>>>>>>> 60ce5cd2dc24d3f9d6c62a37d84752d8bb0859fe
     print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
     edx_cleaned = edx
     scale = edx.axes_manager[2].scale

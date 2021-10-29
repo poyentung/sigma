@@ -153,6 +153,7 @@ class PhaseClassifier(object):
         if normalised==True:
             edx_profiles *= 1/edx_profiles.max(axis=1,keepdims=True)
         return edx_profiles
+<<<<<<< HEAD
 
     def get_unmixed_edx_profile(self, clusters_to_be_calculated=None,
                                 normalised=True, method='NMF', 
@@ -182,6 +183,20 @@ class PhaseClassifier(object):
         components = pd.DataFrame(components.T.round(3), columns=[f'cpnt_{component_num}' for component_num in range(num_inputs)])
 
         return weights, components
+=======
+    
+    def get_unmixed_edx_profile(self, normalised=True, method='NMF', 
+                                method_args={},
+                                binary_filter_args={}):
+        assert(method=='NMF')
+        if method == 'NMF':
+            model = NMF(n_components=self.n_components, init='nndsvd', **method_args)
+        
+        edx_profiles = self.get_all_edx_profile(normalised, binary_filter_args)
+        weight = model.fit_transform(edx_profiles)
+        components = model.components_
+        return weight, components
+>>>>>>> 60ce5cd2dc24d3f9d6c62a37d84752d8bb0859fe
     
     def get_masked_edx(self, cluster_num, threshold=0.8, 
                        denoise=False,keep_fraction=0.13, 
