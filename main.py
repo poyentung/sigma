@@ -11,8 +11,8 @@ from load_dataset.exhaust import *
 
 if __name__ == '__main__':
     
-    file_path='/home/tung/Github/bcf_files/XLI_exhaust_011.bcf'
-    # /Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf
+    # file_path='/home/tung/Github/bcf_files/XLI_exhaust_011.bcf'
+    file_path="/Users/andrewtung/Documents/Github/bcf_files/XLI_exhaust_011.bcf"
     # D:/Github/bcf_files/XLI_exhaust_011.bcf
     # /home/tung/Github/bcf_files
     
@@ -62,13 +62,13 @@ if __name__ == '__main__':
                  )
     
     # Load the trained model file 
-    Ex.load_trained_model('/home/tung/Github/unmix/results/Model-AE_unmix_best')
+    Ex.load_trained_model('results/Model-AE_unmix_best')
     latent = Ex.get_latent()
     
     # Set up an object for GM clustering
     PC = PhaseClassifier(latent, dataset_softmax, sem, 
                          method='BayesianGaussianMixture', 
-                         method_args={'n_components':20,
+                         method_args={'n_components':15,
                                       'random_state':4})
     
     # Plot latent sapce (2-dimensional) with corresponding Gaussian models

@@ -83,7 +83,7 @@ class SEMDataset(object):
 # Data Preprocessing #----------------------------------------------------------
 ######################
   
-def remove_fist_peak(edx:EDSSEMSpectrum, end=108) -> EDSSEMSpectrum:
+def remove_fist_peak(edx:EDSSEMSpectrum, end=0.1197) -> EDSSEMSpectrum:
     print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
     edx_cleaned = edx
     scale = edx.axes_manager[2].scale
@@ -313,3 +313,33 @@ def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
     
     fig.subplots_adjust(wspace=0.2, hspace=0.1)
     
+
+def plot_profile(energy, intensity, peak_list):
+    fig = go.Figure(data=go.Scatter(x=energy, y=intensity),
+                        layout_xaxis_range=[0,8],
+                        layout=go.Layout(title="",
+                                        title_x=0.5,
+                                        xaxis_title="Energy / keV",
+                                        yaxis_title="Intensity",
+                                        width=900,
+                                        height=500))
+    zero_energy_idx = np.where(np.array(energy).round(2)==0)[0][0]
+    for el in peak_list:
+        peak = intensity[zero_energy_idx:][int(peak_dict[el]*100)+1]
+        fig.add_shape(type="line",
+                    x0=peak_dict[el], y0=0, x1=peak_dict[el], y1=0.9*peak,
+                    line=dict(color="black",
+                                width=2,
+                                dash="dot")
+                        )
+
+        fig.add_annotation(x=peak_dict[el], y=peak,
+                            text=el,
+                            showarrow=False,
+                            arrowhead=2,
+                            yshift=30,
+                            textangle=270
+                            )  
+    fig.update_layout(showlegend=False)
+    fig.update_layout(template='simple_white')
+    fig.show()

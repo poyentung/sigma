@@ -9,6 +9,7 @@ import hyperspy.api as hs
 import numpy as np
 import pandas as pd
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+from sklearn.decomposition import NMF
 from sklearn.cluster import KMeans, Birch
 from scipy import ndimage as ndi
 from sklearn.cluster import MeanShift
@@ -46,6 +47,10 @@ class PhaseClassifier(object):
         if self.sem.bse_bin is not None: self.bse=self.sem.bse_bin
         else: self.bse=self.sem.bse
         
+        size = self.edx.axes_manager[2].size
+        scale = self.edx.axes_manager[2].scale
+        offset = self.edx.axes_manager[2].offset
+        self.energy_axis = [((a*scale) + offset) for a in range(0,size)]
         
         if self.method == 'GaussianMixture':
             self.model = GaussianMixture(**method_args).fit(self.latent)
@@ -78,6 +83,8 @@ class PhaseClassifier(object):
         else:
             self.color_palette = 'nipy_spectral'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.n_components-1)
+            
+        
             
 
 #################
@@ -137,8 +144,48 @@ class PhaseClassifier(object):
         
         return binary_map, binary_map_indices, edx_profile
     
+    def get_all_edx_profile(self, normalised=True, binary_filter_args={}):
+        edx_profiles = []
+        for i in range(self.n_components):
+            _,_,edx_profile = self.get_binary_map_edx_profile(i, **binary_filter_args)
+            edx_profiles.append(edx_profile['intensity'])
+        edx_profiles = np.vstack(edx_profiles)
+        if normalised==True:
+            edx_profiles *= 1/edx_profiles.max(axis=1,keepdims=True)
+        return edx_profiles
+
+    def get_unmixed_edx_profile(self, clusters_to_be_calculated=None,
+                                normalised=True, method='NMF', 
+                                method_args={},
+                                binary_filter_args={}):
+        
+        if clusters_to_be_calculated is not None:
+            num_inputs = len(clusters_to_be_calculated)
+        else:
+            num_inputs = self.n_components
+            
+        assert(method=='NMF')
+        if method == 'NMF':
+            model = NMF(n_components=num_inputs, **method_args)
+        
+        edx_profiles = self.get_all_edx_profile(normalised, binary_filter_args)
+        edx_profiles_ = pd.DataFrame(edx_profiles.T, columns=range(edx_profiles.shape[0]))
+        
+        if clusters_to_be_calculated is not None:
+            edx_profiles_ = edx_profiles_[clusters_to_be_calculated]
+            
+        weights = model.fit_transform(edx_profiles_.to_numpy().T)
+        components = model.components_
+
+        weights = pd.DataFrame(weights.round(3), columns=[f'w_{component_num}' for component_num in range(num_inputs)],
+                               index=[f'cluster_{cluster_num}' for cluster_num in edx_profiles_])
+        components = pd.DataFrame(components.T.round(3), columns=[f'cpnt_{component_num}' for component_num in range(num_inputs)])
+
+        return weights, components
+    
     def get_masked_edx(self, cluster_num, threshold=0.8, 
                        denoise=False,keep_fraction=0.13, 
+                       
                        binary_filter_threshold=0.2, 
                        **binary_filter_args):
         
@@ -422,3 +469,39 @@ class PhaseClassifier(object):
             
         fig.show()
     
+    
+    def plot_unmixed_profile(self, weights, components, peak_list = []):
+        if len(peak_list) == 0:
+            peak_list = self.peak_list
+        cpnt_num = len(weights.columns.to_list())
+        if cpnt_num > 4:
+            n_rows = 2
+            n_cols = (cpnt_num//2) +1
+        else:
+            n_rows = 1
+            n_cols = cpnt_num
+    
+        fig, axs = plt.subplots(n_rows, n_cols,figsize=(n_cols*3.6, n_rows*2.6),dpi=150)
+        for row in range(n_rows):
+            for col in range(n_cols):
+                cur_cpnt = (row*n_cols)+col
+                if (row==1) and (cpnt_num%2==1) and (cur_cpnt==7): # delete the extra subfigures
+                    fig.delaxes(axs[row,col]) 
+                    break
+                cpnt = f'cpnt_{cur_cpnt}'
+                axs[row,col].plot(self.energy_axis, components[cpnt], linewidth=1)
+                axs[row,col].set_xlim(0,8)
+                axs[row,col].set_ylabel('Intensity')
+                axs[row,col].set_xlabel('Energy (keV)')
+                axs[row,col].set_title(f'component_{cur_cpnt}')
+    
+                zero_energy_idx = np.where(np.array(self.energy_axis).round(2)==0)[0][0]
+                intensity = components[cpnt].to_numpy()
+                for el in peak_list:
+                    peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
+                    axs[row,col].vlines(self.peak_dict[el], 0, 0.9*peak, linewidth=1, color = 'grey', linestyles='dashed')
+                    axs[row,col].text(self.peak_dict[el]-0.18, peak+(intensity.max()/15), el, rotation='vertical', fontsize=8)
+            
+        fig.subplots_adjust(hspace=0.3, wspace=0.)
+        plt.tight_layout()
+        plt.show()
