@@ -4,6 +4,7 @@ import hyperspy.api as hs
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
 
 import numpy as np
+import pandas as pd
 import itertools
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -83,11 +84,7 @@ class SEMDataset(object):
 # Data Preprocessing #----------------------------------------------------------
 ######################
   
-<<<<<<< HEAD
 def remove_fist_peak(edx:EDSSEMSpectrum, end=0.1197) -> EDSSEMSpectrum:
-=======
-def remove_fist_peak(edx:EDSSEMSpectrum, end=0.01197) -> EDSSEMSpectrum:
->>>>>>> 60ce5cd2dc24d3f9d6c62a37d84752d8bb0859fe
     print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
     edx_cleaned = edx
     scale = edx.axes_manager[2].scale
@@ -319,6 +316,8 @@ def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
     
 
 def plot_profile(energy, intensity, peak_list):
+    if type(intensity) is pd.core.series.Series:
+        intensity = intensity.to_list()
     fig = go.Figure(data=go.Scatter(x=energy, y=intensity),
                         layout_xaxis_range=[0,8],
                         layout=go.Layout(title="",

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+sys.path.append('../')
+from load_dataset.exhaust import plot_profile
+from models.clustering import PhaseClassifier
+
 import numpy as np
 import pandas as pd
 import ipywidgets as widgets
@@ -16,11 +21,13 @@ def unique_sorted_values_plus_ALL(array):
     return unique
     
 
-def show_unmixed_components(weights:pd.DataFrame):
+def show_unmixed_weights(weights:pd.DataFrame):
     dropdown_cluster = widgets.Dropdown(options=unique_sorted_values_plus_ALL(weights.index))
     output_cluster = widgets.Output()
     plots_output = widgets.Output()
     
+    with output_cluster:
+        display(weights)
     def dropdown_cluster_eventhandler(change):
         output_cluster.clear_output()
         with output_cluster:
@@ -44,4 +51,23 @@ def show_unmixed_components(weights:pd.DataFrame):
     
     display(dropdown_cluster)
     display(output_cluster)
+    display(plots_output)
+    
+def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
+    dropdown_cluster = widgets.Dropdown(options=unique_sorted_values_plus_ALL(components.columns))
+    plots_output = widgets.Output()
+    
+    with plots_output:
+        PC.plot_unmixed_profile(components)
+    def dropdown_cluster_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            if (change.new == ALL):
+                PC.plot_unmixed_profile(components)
+            else:
+                plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
+    
+    dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
+    
+    display(dropdown_cluster)
     display(plots_output)

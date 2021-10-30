@@ -4,24 +4,9 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = empty-project-type
-<<<<<<< HEAD
-recent_files = ['models/clustering.py']
+recent_files = ['../../.config/spyder-py3/temp.py']
 
 [main]
 version = 0.2.0
 recent_files = []
-=======
-<<<<<<< HEAD
-recent_files = ['load_dataset\\exhaust.py', 'load_dataset\\utils.py', 'src\\run_experiment.py', 'models\\autoencoder.py', 'main.py']
-
-[main]
-version = 0.2.0
-=======
-recent_files = ['models\\autoencoder.py', 'models\\clustering.py', 'src\\utils.py', 'src\\run_experiment.py', 'main.py']
-
-[main]
-version = 0.2.0
-recent_files = ['main.py', 'src/run_experiment.py', 'models/clustering.py']
->>>>>>> eeda0a8a7105a02de82f60ec753c4b576548756d
->>>>>>> 60ce5cd2dc24d3f9d6c62a37d84752d8bb0859fe
 
