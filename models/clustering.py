@@ -111,8 +111,6 @@ class PhaseClassifier(object):
 #################
 # Data Analysis #--------------------------------------------------------------
 #################
-    
-    
         
     def get_binary_map_edx_profile(self, cluster_num=1, threshold=0.8, 
                                    denoise=False,keep_fraction=0.13, 
@@ -473,11 +471,11 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
-        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,2.5), dpi=96,
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,3), dpi=96,
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
 
         axs[0].imshow(binary_map, interpolation='none', alpha=1)
-        axs[0].set_title(f'Filtered Binary map (cluster {cluster_num})')
+        axs[0].set_title(f'Binary map (cluster {cluster_num})',fontsize=10)
         axs[0].axis('off')
         axs[0].set_aspect('equal', 'box')
     
@@ -485,7 +483,7 @@ class PhaseClassifier(object):
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
-        axs[1].set_title(f'BSE + Phase Map (cluster {cluster_num})')
+        axs[1].set_title('BSE + Binary Map',fontsize=10)
         
         intensity = edx_profile['intensity'].to_numpy()
         axs[2].set_xticks(np.arange(0, 11, step=1))

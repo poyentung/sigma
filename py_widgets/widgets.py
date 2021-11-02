@@ -8,18 +8,27 @@ from models.clustering import PhaseClassifier
 
 import numpy as np
 import pandas as pd
+import hyperspy.api as hs
 import seaborn as sns
 import ipywidgets as widgets
 from IPython.display import display
 from  matplotlib import pyplot as plt
 
-ALL = 'ALL'
+def search_energy_peak():
+    text = widgets.BoundedFloatText(value=1.4898,step=0.1,description='Energy (keV):', continuous_update=True)
+    button = widgets.Button(description='Search')
+    out = widgets.Output()
 
-def unique_sorted_values_plus_ALL(array):
-    unique = array.unique().tolist()
-    unique.sort()
-    unique.insert(0, ALL)
-    return unique
+    def button_evenhandler(_):
+        out.clear_output()
+        with out:
+            print('Candidates:')
+            print(hs.eds.get_xray_lines_near_energy(energy=text.value, only_lines=['a', 'b']))
+
+    button.on_click(button_evenhandler)
+    widget_set = widgets.HBox([text, button])
+    display(widget_set)
+    display(out)
 
 def show_cluster_distribution(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
@@ -46,39 +55,44 @@ def show_cluster_distribution(PC:PhaseClassifier):
     
 
 def show_unmixed_weights(weights:pd.DataFrame):
-    dropdown_cluster = widgets.Dropdown(options=unique_sorted_values_plus_ALL(weights.index))
+    weights_options = [f'cluster_{n}' for n in range(weights.index.shape[0])]
+    multi_select_cluster = widgets.SelectMultiple(options=['All']+weights_options)
     output_cluster = widgets.Output()
     plots_output = widgets.Output()
     
     with output_cluster:
         display(weights)
-    def dropdown_cluster_eventhandler(change):
+        
+    def multi_select_cluster_eventhandler(change):
         output_cluster.clear_output()
         with output_cluster:
-            if (change.new == ALL):
+            if (change.new == 'All'):
                 display(weights)
             else:
-                display(weights[weights.index == change.new])
+                row_index = [cluster for cluster in change.new]
+                display(weights.loc[row_index])
     
         plots_output.clear_output()
         with plots_output:
-            if (change.new != ALL):
-                num_cpnt = len(weights.columns.to_list())
-                fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
-                axs.bar(np.arange(0,num_cpnt), weights[weights.index == change.new].to_numpy().ravel(), width=0.6)
-                axs.set_xticks(np.arange(0,num_cpnt))
-                axs.set_ylabel('weight of component')
-                axs.set_xlabel('component number')
-                plt.show()
+            if (change.new != 'All'):
+                for cluster in change.new:
+                    num_cpnt = len(weights.columns.to_list())
+                    fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
+                    axs.bar(np.arange(0,num_cpnt), weights[weights.index == cluster].to_numpy().ravel(), width=0.6)
+                    axs.set_xticks(np.arange(0,num_cpnt))
+                    axs.set_ylabel('weight of component')
+                    axs.set_xlabel('component number')
+                    plt.show()
     
-    dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
+    multi_select_cluster.observe(multi_select_cluster_eventhandler, names='value')
     
-    display(dropdown_cluster)
+    display(multi_select_cluster)
     display(output_cluster)
     display(plots_output)
     
 def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
-    dropdown_cluster = widgets.Dropdown(options=unique_sorted_values_plus_ALL(components.columns))
+    weights_options = [f'cluster_{n}' for n in range(components.columns.shape[0])]
+    dropdown_cluster = widgets.Dropdown(options=['All']+weights_options)
     plots_output = widgets.Output()
     
     with plots_output:
@@ -86,7 +100,7 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
     def dropdown_cluster_eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            if (change.new == ALL):
+            if (change.new == 'All'):
                 PC.plot_unmixed_profile(components)
             else:
                 plot_profile(PC.energy_axis, components[change.new], PC.peak_list)

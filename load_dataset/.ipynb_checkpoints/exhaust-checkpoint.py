@@ -24,6 +24,9 @@ for element in hs.material.elements:
 class SEMDataset(object):
     def __init__(self, file_path:str):
         bcf_dataset = hs.load(file_path)
+        self.original_bse = bcf_dataset[0]
+        self.original_edx = bcf_dataset[2]
+        
         self.bse = bcf_dataset[0] #load BSE data
         self.edx = bcf_dataset[2] #load EDX data from bcf file
         self.edx.change_dtype('float32') # change edx data from unit8 into float32
@@ -37,11 +40,11 @@ class SEMDataset(object):
     
     def set_feature_list(self, feature_list):
         self.feature_list = feature_list
-        self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
         for s in [self.edx, self.edx_bin]:
             if s is not None:
                 s.metadata.Sample.xray_lines = self.feature_list
-        print(f'Set feature_list as {self.feature_list}')
+        self.feature_dict = {el:i for (i,el) in enumerate(feature_list)}
+        print(f'Set feature_list to {self.feature_list}')
     
     def rebin_signal(self, size=(2,2)):
         print(f'Rebinning the intensity with the size of {size}')
@@ -59,6 +62,33 @@ class SEMDataset(object):
             end_ = int((end-offset)/scale)
             for i in range(end_):
                 edx.isig[i] = 0
+    
+    def peak_intensity_normalisation(self) -> EDSSEMSpectrum:
+        if self.edx_bin:
+            edx_norm = self.edx_bin
+        else:
+            edx_norm = self.edx
+        edx_norm.data = edx_norm.data / edx_norm.data.sum(axis=2, keepdims=True)
+        return edx_norm
+        
+    def peak_denoising_PCA(self, 
+                           n_components_to_reconstruct=10, 
+                           plot_results=True) -> EDSSEMSpectrum:
+        if self.edx_bin:
+            edx_denoised = self.edx_bin
+        else:
+            edx_denoised = self.edx
+        edx_denoised.decomposition(normalize_poissonian_noise=True, 
+                                   algorithm='SVD', 
+                                   random_state=0, 
+                                   output_dimension=n_components_to_reconstruct)
+
+        if plot_results == True:
+            edx_denoised.plot_decomposition_results()
+            edx_denoised.plot_explained_variance_ratio(log=True)
+            edx_denoised.plot_decomposition_factors(comp_ids=4)
+
+        return edx_denoised
     
     def get_feature_maps(self, feature_list=None) -> np:
         if feature_list is not None:
