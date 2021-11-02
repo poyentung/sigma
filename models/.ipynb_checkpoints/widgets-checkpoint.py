@@ -71,3 +71,55 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
     
     display(dropdown_cluster)
     display(plots_output)
+
+def show_clusters(PC:PhaseClassifier,binary_filter_args):
+    cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+    dropdown_cluster = widgets.Dropdown(options=['ALL']+cluster_options)
+    plots_output = widgets.Output()
+    
+    with plots_output:
+        for i in range(PC.n_components):
+            PC.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
+        
+    def dropdown_cluster_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            if (change.new == ALL):
+                pass
+            else:
+                PC.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
+        
+    dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
+    display(dropdown_cluster)
+    display(plots_output)
+    
+def show_clusters(PC:PhaseClassifier,binary_filter_args):
+    cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+    multi_select = widgets.SelectMultiple(options=cluster_options)
+    plots_output = widgets.Output()
+    profile_output = widgets.Output()
+        
+    def eventhandler(change):
+        plots_output.clear_output()
+        profile_output.clear_output()
+        
+        with plots_output:
+            for cluster in change.new:
+                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]), binary_filter_args=binary_filter_args)
+                
+        with profile_output:
+            ### X-ray profile ###
+            for cluster in change.new:
+                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),
+                                                                 **binary_filter_args)
+                plot_profile(edx_profile['energy'], edx_profile['intensity'], PC.peak_list)
+        
+    multi_select.observe(eventhandler, names='value')
+    
+    display(multi_select)
+    tab = widgets.Tab([plots_output, profile_output])
+    tab.set_title(0, 'clusters + edx')
+    tab.set_title(1, 'edx')
+    display(tab)
+    # display(plots_output)
+    # display(profile_output)

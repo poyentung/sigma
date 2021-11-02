@@ -422,11 +422,11 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
-        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,3), dpi=150,
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,2.5), dpi=96,
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
 
         axs[0].imshow(binary_map, interpolation='none', alpha=1)
-        axs[0].set_title('Filtered Binary map')
+        axs[0].set_title(f'Filtered Binary map (cluster {cluster_num})')
         axs[0].axis('off')
         axs[0].set_aspect('equal', 'box')
     
@@ -434,7 +434,7 @@ class PhaseClassifier(object):
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
-        axs[1].set_title('BSE + Phase Map')
+        axs[1].set_title(f'BSE + Phase Map (cluster {cluster_num})')
         
         intensity = edx_profile['intensity'].to_numpy()
         axs[2].set_xticks(np.arange(0, 11, step=1))
@@ -449,7 +449,6 @@ class PhaseClassifier(object):
         axs[2].set_xlim(offset,8)
         axs[2].set_xlabel('Energy axis / keV', fontsize=10)
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
-        
         
         if self.n_components <= 10:
             axs[2].plot(edx_profile['energy'], edx_profile['intensity'], 
@@ -471,8 +470,38 @@ class PhaseClassifier(object):
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
             
-        fig.show()
+        plt.show()
+    
+    def plot_binary_map(self, cluster_num, 
+                        binary_filter_args={'threshold':0.8, 
+                                            'denoise':False, 'keep_fraction':0.13, 
+                                            'binary_filter_threshold':0.2},
+                        save=None,
+                        **kwargs):
         
+        binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
+                                                                                      **binary_filter_args)
+        
+        fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(5,2.5), dpi=96,**kwargs) 
+
+        axs[0].imshow(binary_map, interpolation='none', alpha=1)
+        axs[0].set_title(f'Filtered Binary map (cluster {cluster_num})')
+        axs[0].axis('off')
+        axs[0].set_aspect('equal', 'box')
+    
+        axs[1].imshow(self.sem.bse_bin.data, cmap='gray',interpolation='none', alpha=1)
+        axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
+        axs[1].grid(False)
+        axs[1].axis('off')
+        axs[1].set_title(f'BSE + Phase Map (cluster {cluster_num})')
+        
+        # fig.subplots_adjust(left=0.1)
+        plt.tight_layout()
+        
+        if save is not None:
+            fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
+            
+        plt.show()
         
     def plot_unmixed_profile(self, components, peak_list = []):
             if len(peak_list) == 0:
