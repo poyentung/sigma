@@ -47,11 +47,13 @@ class PhaseClassifier(object):
         if self.sem.bse_bin is not None: self.bse=self.sem.bse_bin
         else: self.bse=self.sem.bse
         
+        ### Get energy_axis ###
         size = self.edx.axes_manager[2].size
         scale = self.edx.axes_manager[2].scale
         offset = self.edx.axes_manager[2].offset
         self.energy_axis = [((a*scale) + offset) for a in range(0,size)]
         
+        ### Train the model ###
         if self.method == 'GaussianMixture':
             self.model = GaussianMixture(**method_args).fit(self.latent)
             self.n_components = self.method_args['n_components']
@@ -64,7 +66,24 @@ class PhaseClassifier(object):
         elif self.method == 'Birch':
             self.model = Birch(**method_args).partial_fit(self.latent)
             self.n_components = self.method_args['n_clusters']
+        
+        ### calculate cluster probability maps ###
+        labels = self.model.predict(self.latent)
+        means = []
+        dataset_ravel = self.dataset.reshape(-1,self.dataset.shape[2])
+        for i in range(self.n_components):
+            mean = dataset_ravel[np.where(labels==i)[0]].mean(axis=0)
+            means.append(mean.reshape(1,-1))
+        mu = np.concatenate(means,axis=0)
+        
+        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+            prob_map = self.model.predict_proba(self.latent)
             
+        self.mu = mu 
+        self.labels = labels
+        self.prob_map = prob_map
+        
+        ### Calcuate peak_dict ###
         self.peak_dict = dict()
         for element in hs.material.elements:
             if element[0]=='Li': continue
@@ -85,9 +104,9 @@ class PhaseClassifier(object):
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.n_components-1)
             
         
-    def set_peak_list(self, new_list):
-        print(f'Set the peak list to {new_list}')
+    def set_feature_list(self, new_list):
         self.peak_list = new_list
+        self.sem.set_feature_list(new_list)
 
 #################
 # Data Analysis #--------------------------------------------------------------
@@ -255,7 +274,7 @@ class PhaseClassifier(object):
         binary_map, _, _ = self.get_binary_map_edx_profile(cluster_num, **binary_filter_args)
         pixel_to_um = self.edx.axes_manager[0].scale
         prop_list = ['area',
-                     'equivalent_diameter', #Added... verify if it works
+                     'equivalent_diameter', 
                      'major_axis_length',
                      'minor_axis_length',
                      'min_intensity',
@@ -334,7 +353,7 @@ class PhaseClassifier(object):
             ax.add_patch(Ellipse(position, nsig * width, nsig * height,
                                  angle, **kwargs))
     
-    def plot_phase_distribution(self, save=None, **kwargs):
+    def plot_cluster_distribution(self, save=None, **kwargs):
         labels = self.model.predict(self.latent)
         means = []
         dataset_ravel = self.dataset.reshape(-1,self.dataset.shape[2])
@@ -381,6 +400,38 @@ class PhaseClassifier(object):
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
     
+    def plot_single_cluster_distribution(self, cluster_num, kwargs={}):
+        fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 3),dpi=96, **kwargs)
+        fig.subplots_adjust(hspace=0.35, wspace=0.1)
+        
+        formatter = mpl.ticker.ScalarFormatter(useMathText=True)
+        formatter.set_scientific(True) 
+        formatter.set_powerlimits((-1,1))
+        
+        
+        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+            prob_map_i = self.prob_map[:,cluster_num]
+        else:
+            prob_map_i = np.where(self.labels==cluster_num,1,0)
+        im=axs[0].imshow(prob_map_i.reshape(self.height, self.width), cmap='viridis')
+        axs[0].set_title('Probability of each pixel for cluster '+str(cluster_num))
+
+        axs[0].axis('off')
+        cbar = fig.colorbar(im,ax=axs[0], shrink=0.9, pad=0.025)
+        cbar.outline.set_visible(False)
+        cbar.ax.tick_params(labelsize=10, size=0)
+
+        if self.n_components <= 10:
+            axs[1].bar(self.sem.feature_list, self.mu[cluster_num], width=0.6, 
+                         color = plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
+        else:
+            axs[1].bar(self.sem.feature_list, self.mu[cluster_num], width=0.6, 
+                         color = plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
+
+        axs[1].set_title('Mean value for cluster '+str(cluster_num))
+    
+        fig.subplots_adjust(wspace=0.05, hspace=0.2)
+        plt.show()
     
     
     

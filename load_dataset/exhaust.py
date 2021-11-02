@@ -37,11 +37,10 @@ class SEMDataset(object):
     
     def set_feature_list(self, feature_list):
         self.feature_list = feature_list
-        self.feature_dict = {el:i for (i,el) in enumerate(self.feature_list)}
         for s in [self.edx, self.edx_bin]:
             if s is not None:
                 s.metadata.Sample.xray_lines = self.feature_list
-        print(f'Set feature_list as {self.feature_list}')
+        print(f'Set feature_list to {self.feature_list}')
     
     def rebin_signal(self, size=(2,2)):
         print(f'Rebinning the intensity with the size of {size}')
@@ -232,26 +231,37 @@ def plot_sum_spectrum(edx, xray_lines=True):
     fig.update_layout(template='simple_white')
     fig.show()
 
-def plot_intensity_maps(edx, element_list, grid_dims=(2,4), save=None):
-    cmaps = []
-    c = mcolors.ColorConverter().to_rgb
-    for i in range(len(element_list)):
-        rvb = make_colormap([c('k'),sns.color_palette('bright')[i], 0.7, sns.color_palette('bright')[i]])
-        cmaps.append(rvb)
-    nrow = grid_dims[0]
-    ncol = grid_dims[1]
+def plot_intensity_maps(edx, element_list, save=None):
+    num_peak = len(element_list)
+    if num_peak > 4:
+        n_rows = (num_peak+3)//4
+        n_cols = 4
+    else:
+        n_rows = 1
+        n_cols = num_peak
 
-    fig, axs = plt.subplots(nrows=nrow, ncols=ncol, sharex=True, sharey=True, 
-                            figsize=(4*ncol,3.3*nrow))
-    for i in range(nrow):
-      for j in range(ncol):
-        el = element_list[(i*ncol)+j]
-        el_map = edx.get_lines_intensity([el])[0].data
-        im = axs[i,j].imshow(el_map, cmap='viridis')#cmaps[(i*ncol)+j])
-        axs[i,j].set_yticks([])
-        axs[i,j].set_xticks([])
-        axs[i,j].set_title(el, fontsize=16)
-        fig.colorbar(im, ax=axs[i,j], shrink=0.75)
+    fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True, 
+                            figsize=(4*n_cols,3.3*n_rows))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            cur_peak = (i*n_cols)+j
+            if cur_peak>num_peak-1: # delete the extra subfigures
+                fig.delaxes(axs[i,j])
+            else:
+                if num_peak > 4:
+                    axs_sub = axs[i,j]
+                elif num_peak==1:
+                    axs_sub = axs
+                else:
+                    axs_sub = axs[j]
+                    
+                el = element_list[cur_peak]
+                el_map = edx.get_lines_intensity([el])[0].data
+                im = axs_sub.imshow(el_map, cmap='viridis')#cmaps[(i*ncol)+j])
+                axs_sub.set_yticks([])
+                axs_sub.set_xticks([])
+                axs_sub.set_title(el, fontsize=16)
+                fig.colorbar(im, ax=axs_sub, shrink=0.75)
 
     fig.subplots_adjust(wspace=0.11, hspace=0.)
     
