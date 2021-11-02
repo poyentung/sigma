@@ -305,7 +305,7 @@ class PhaseClassifier(object):
             # for the remaining iteration, only add elemental intensity into the dict()
             else:
                 for prop in ['min_intensity','mean_intensity','max_intensity']:
-                    stat_info[f'{element}_{prop}'] = [cluster[prop] for cluster in clusters]
+                    stat_info[f'{prop}_{element}'] = [cluster[prop] for cluster in clusters]
                 
         return pd.DataFrame(data=stat_info).round(3)
         

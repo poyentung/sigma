@@ -56,59 +56,55 @@ def show_cluster_distribution(PC:PhaseClassifier):
 
 def show_unmixed_weights(weights:pd.DataFrame):
     weights_options = [f'cluster_{n}' for n in range(weights.index.shape[0])]
-    multi_select_cluster = widgets.SelectMultiple(options=['All']+weights_options)
-    output_cluster = widgets.Output()
+    multi_select_cluster = widgets.SelectMultiple(options=weights_options)
     plots_output = widgets.Output()
+    all_output = widgets.Output()
     
-    with output_cluster:
+    with all_output:
         display(weights)
         
     def multi_select_cluster_eventhandler(change):
-        output_cluster.clear_output()
-        with output_cluster:
-            if (change.new == 'All'):
-                display(weights)
-            else:
-                row_index = [cluster for cluster in change.new]
-                display(weights.loc[row_index])
-    
         plots_output.clear_output()
         with plots_output:
-            if (change.new != 'All'):
-                for cluster in change.new:
-                    num_cpnt = len(weights.columns.to_list())
-                    fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
-                    axs.bar(np.arange(0,num_cpnt), weights[weights.index == cluster].to_numpy().ravel(), width=0.6)
-                    axs.set_xticks(np.arange(0,num_cpnt))
-                    axs.set_ylabel('weight of component')
-                    axs.set_xlabel('component number')
-                    plt.show()
+            row_index = [cluster for cluster in change.new]
+            display(weights.loc[row_index])
+            for cluster in change.new:
+                num_cpnt = len(weights.columns.to_list())
+                fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
+                axs.bar(np.arange(0,num_cpnt), weights[weights.index == cluster].to_numpy().ravel(), width=0.6)
+                axs.set_xticks(np.arange(0,num_cpnt))
+                axs.set_ylabel('weight of component')
+                axs.set_xlabel('component number')
+                plt.show()
     
     multi_select_cluster.observe(multi_select_cluster_eventhandler, names='value')
     
     display(multi_select_cluster)
-    display(output_cluster)
-    display(plots_output)
+    tab = widgets.Tab([all_output, plots_output])
+    tab.set_title(0, 'All weights')
+    tab.set_title(1, 'Single weight')
+    display(tab)
     
 def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
-    weights_options = [f'cluster_{n}' for n in range(components.columns.shape[0])]
-    dropdown_cluster = widgets.Dropdown(options=['All']+weights_options)
+    weights_options = [f'cpnt_{n}' for n in range(components.columns.shape[0])]
+    dropdown_cluster = widgets.Dropdown(options=weights_options)
     plots_output = widgets.Output()
+    all_output = widgets.Output()
     
-    with plots_output:
+    with all_output:
         PC.plot_unmixed_profile(components)
     def dropdown_cluster_eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            if (change.new == 'All'):
-                PC.plot_unmixed_profile(components)
-            else:
-                plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
+            plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
     
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
     
     display(dropdown_cluster)
-    display(plots_output)
+    tab = widgets.Tab([all_output, plots_output])
+    tab.set_title(0, 'All cpnt')
+    tab.set_title(1, 'Single cpnt')
+    display(tab)
 
 def show_clusters(PC:PhaseClassifier,binary_filter_args):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
