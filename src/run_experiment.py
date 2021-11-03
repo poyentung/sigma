@@ -4,6 +4,7 @@ import os
 import random
 import datetime
 import timeit
+from tqdm.notebook import tqdm_notebook as tqdm
 import numpy as np
 from . import utils
 
@@ -191,28 +192,21 @@ class Experiment(object):
         
         for epoch in range(start_epoch, self.num_epochs):  # loop over the dataset multiple times
             
-            t0 = timeit.default_timer()
-            self.train(train_dataloader, epoch)
+            self.train(train_dataloader, epoch+1)
             
             if self.task == 'train_eval': 
-                self.test(test_dataloader, epoch)
+                self.test(test_dataloader, epoch+1)
             elif self.task == 'train_all':
-                self.scheduler.step(self.train_loss[epoch])
-                self.early_stopping_check(epoch)
+                self.scheduler.step(self.train_loss[epoch+1])
+                self.early_stopping_check(epoch+1)
                 
             if self.save_model_every_epoch: 
-               self.save_model(epoch)
+                self.save_model(epoch+1)
                 
             if self.patience_remaining <= 0:
-                print('No more patience (',self.initial_patience,') left at epoch',epoch)
+                print('No more patience (',self.initial_patience,') left at epoch',epoch+1)
                 print('--> Implementing early stopping. Best epoch was:', self.best_valid_epoch)
                 break
-            
-            t1 = timeit.default_timer()
-            print(f'[{epoch+1:02}/{self.num_epochs:02}]',\
-                   f'train_loss: {self.train_loss[epoch]:.6f},',\
-                   f'test_loss: {self.test_loss[epoch]:.6f},',\
-                   f'time: {round((t1 - t0),1)} sec')
                 
         #self.save_final_summary()
     
@@ -271,27 +265,34 @@ class Experiment(object):
         epoch_loss = list()
         
         # Initialize numpy arrays for storing results. examples x labels
-        # Do NOT use concatenation, or else you will have memory fragmentation.   
-        
-        for batch_idx, batch in enumerate(dataloader):
-            x = batch.to(self.device)
-            
-            self.optimizer.zero_grad()
-            if training:
-                recon_x = model(x)
-            else:
-                with torch.set_grad_enabled(False):
-                   recon_x = model(x)
+        # Do NOT use concatenation, or else you will have memory fragmentation.
+        disable = False if training else True
+        with tqdm(dataloader, unit="batch", disable=disable) as tepoch:
+            for batch_idx, batch in enumerate(tepoch):
+                if training:
+                    tepoch.set_description(f"Epoch [ {epoch:02} / {self.num_epochs:02} ]")
+                x = batch.to(self.device)
+                
+                self.optimizer.zero_grad()
+                if training:
+                    recon_x = model(x)
+                else:
+                    with torch.set_grad_enabled(False):
+                        recon_x = model(x)
 
-            loss = self.criterion(recon_x, x)
+                loss = self.criterion(recon_x, x)
+
+                if training:
+                    loss.backward()
+                    self.optimizer.step()   
             
+                epoch_loss.append(loss.detach().item())
+                torch.cuda.empty_cache()
+            
+            avg_loss = sum(epoch_loss)/len(epoch_loss)
             if training:
-                loss.backward()
-                self.optimizer.step()   
-            
-            epoch_loss.append(loss.detach().item())
-            torch.cuda.empty_cache()
-        
+                tepoch.set_postfix(train_loss=f'{avg_loss:.6f}')
+                
         #Return loss and classification predictions and classification gr truth
         return sum(epoch_loss)/len(epoch_loss)
     
