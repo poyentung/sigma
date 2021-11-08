@@ -158,8 +158,8 @@ class Experiment(object):
             # self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         
         #Tracking losses and evaluation results
-        self.train_loss = np.zeros((self.num_epochs))
-        self.test_loss = np.zeros((self.num_epochs))
+        self.train_loss = np.zeros((self.num_epochs+1))
+        self.test_loss = np.zeros((self.num_epochs+1))
             
         #For early stopping
         self.initial_patience = patience
