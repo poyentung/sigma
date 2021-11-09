@@ -2,6 +2,7 @@
 
 import hyperspy.api as hs
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
+from hyperspy._signals.signal2d import Signal2D
 
 import numpy as np
 import pandas as pd
@@ -24,11 +25,14 @@ for element in hs.material.elements:
 class SEMDataset(object):
     def __init__(self, file_path:str):
         bcf_dataset = hs.load(file_path)
-        self.original_bse = bcf_dataset[0]
-        self.original_edx = bcf_dataset[2]
-        
-        self.bse = bcf_dataset[0] #load BSE data
-        self.edx = bcf_dataset[2] #load EDX data from bcf file
+        for dataset in bcf_dataset:
+            if type(dataset) is Signal2D:
+                self.original_bse = dataset
+                self.bse = dataset #load BSE data
+            elif type(dataset) is EDSSEMSpectrum: 
+                self.original_edx = dataset
+                self.edx = dataset #load EDX data from bcf file
+                
         self.edx.change_dtype('float32') # change edx data from unit8 into float32
         
         self.edx_bin = None
