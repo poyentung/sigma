@@ -175,32 +175,37 @@ class PhaseClassifier(object):
             edx_profiles *= 1/edx_profiles.max(axis=1,keepdims=True)
         return edx_profiles
 
-    def get_unmixed_edx_profile(self, clusters_to_be_calculated=None,
+    def get_unmixed_edx_profile(self, 
+                                clusters_to_be_calculated='All',
+                                n_components='All',
                                 normalised=True, method='NMF', 
                                 method_args={},
                                 binary_filter_args={}):
         
-        if clusters_to_be_calculated is not None:
+        if clusters_to_be_calculated != 'All':
             num_inputs = len(clusters_to_be_calculated)
         else:
             num_inputs = self.n_components
-            
+        
+        if n_components=='All':
+            n_components = num_inputs
+
         assert(method=='NMF')
         if method == 'NMF':
-            model = NMF(n_components=num_inputs, **method_args)
+            model = NMF(n_components=n_components, **method_args)
         
         edx_profiles = self.get_all_edx_profile(normalised, binary_filter_args)
         edx_profiles_ = pd.DataFrame(edx_profiles.T, columns=range(edx_profiles.shape[0]))
         
-        if clusters_to_be_calculated is not None:
+        if clusters_to_be_calculated != 'All':
             edx_profiles_ = edx_profiles_[clusters_to_be_calculated]
             
         weights = model.fit_transform(edx_profiles_.to_numpy().T)
         components = model.components_
 
-        weights = pd.DataFrame(weights.round(3), columns=[f'w_{component_num}' for component_num in range(num_inputs)],
+        weights = pd.DataFrame(weights.round(3), columns=[f'w_{component_num}' for component_num in range(n_components)],
                                index=[f'cluster_{cluster_num}' for cluster_num in edx_profiles_])
-        components = pd.DataFrame(components.T.round(3), columns=[f'cpnt_{component_num}' for component_num in range(num_inputs)])
+        components = pd.DataFrame(components.T.round(3), columns=[f'cpnt_{component_num}' for component_num in range(n_components)])
 
         return weights, components
     

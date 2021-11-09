@@ -55,7 +55,7 @@ def show_cluster_distribution(PC:PhaseClassifier):
     
 
 def show_unmixed_weights(weights:pd.DataFrame):
-    weights_options = [f'cluster_{n}' for n in range(weights.index.shape[0])]
+    weights_options = weights.index
     multi_select_cluster = widgets.SelectMultiple(options=weights_options)
     plots_output = widgets.Output()
     all_output = widgets.Output()
@@ -86,7 +86,7 @@ def show_unmixed_weights(weights:pd.DataFrame):
     display(tab)
     
 def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
-    weights_options = [f'cpnt_{n}' for n in range(components.columns.shape[0])]
+    weights_options = components.columns
     dropdown_cluster = widgets.Dropdown(options=weights_options)
     plots_output = widgets.Output()
     all_output = widgets.Output()
