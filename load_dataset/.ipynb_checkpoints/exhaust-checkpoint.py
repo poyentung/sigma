@@ -25,10 +25,17 @@ for element in hs.material.elements:
 class SEMDataset(object):
     def __init__(self, file_path:str):
         bcf_dataset = hs.load(file_path)
+        self.bse = None
         for dataset in bcf_dataset:
-            if type(dataset) is Signal2D:
+            if(self.bse is None) and (type(dataset) is Signal2D):
                 self.original_bse = dataset
                 self.bse = dataset #load BSE data
+            elif (self.bse is not None) and (type(dataset) is Signal2D):
+                old_w, old_h = self.bse.data.shape
+                new_w, new_h = dataset.data.shape
+                if (new_w+new_h) < (old_w+old_h):
+                    self.original_bse = dataset
+                    self.bse = dataset
             elif type(dataset) is EDSSEMSpectrum: 
                 self.original_edx = dataset
                 self.edx = dataset #load EDX data from bcf file
