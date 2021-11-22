@@ -477,8 +477,6 @@ class PhaseClassifier(object):
         else:
             axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
                           alpha=0.6, norm=self.color_norm)
-            axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
-                          alpha=0.6, norm=self.color_norm)
         axs[1].axis('off')   
         axs[1].set_title('Cluster map')
     
