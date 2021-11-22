@@ -25,10 +25,17 @@ for element in hs.material.elements:
 class SEMDataset(object):
     def __init__(self, file_path:str):
         bcf_dataset = hs.load(file_path)
+        self.bse = None
         for dataset in bcf_dataset:
-            if type(dataset) is Signal2D:
+            if(self.bse is None) and (type(dataset) is Signal2D):
                 self.original_bse = dataset
                 self.bse = dataset #load BSE data
+            elif (self.bse is not None) and (type(dataset) is Signal2D):
+                old_w, old_h = self.bse.data.shape
+                new_w, new_h = dataset.data.shape
+                if (new_w+new_h) < (old_w+old_h):
+                    self.original_bse = dataset
+                    self.bse = dataset
             elif type(dataset) is EDSSEMSpectrum: 
                 self.original_edx = dataset
                 self.edx = dataset #load EDX data from bcf file
@@ -266,7 +273,7 @@ def plot_sum_spectrum(edx, xray_lines=True):
     fig.update_layout(template='simple_white')
     fig.show()
 
-def plot_intensity_maps(edx, element_list, save=None):
+def plot_intensity_maps(edx, element_list, cmap=None,save=None):
     num_peak = len(element_list)
     if num_peak > 4:
         n_rows = (num_peak+3)//4
@@ -274,9 +281,16 @@ def plot_intensity_maps(edx, element_list, save=None):
     else:
         n_rows = 1
         n_cols = num_peak
-
+    
+    c = mcolors.ColorConverter().to_rgb
+    # color = sns.color_palette("Spectral", as_cmap=True)
+    color = plt.get_cmap('hsv')
+    cmaps = []
+    for i in range(num_peak):
+        cmaps.append(make_colormap([c('k'), color(i/num_peak)[:3], 1, color(i/num_peak)[:3]]))
+        
     fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True, 
-                            figsize=(4*n_cols,3.3*n_rows))
+                            figsize=(4*n_cols,3.*n_rows))
     for i in range(n_rows):
         for j in range(n_cols):
             cur_peak = (i*n_cols)+j
@@ -292,31 +306,74 @@ def plot_intensity_maps(edx, element_list, save=None):
                     
                 el = element_list[cur_peak]
                 el_map = edx.get_lines_intensity([el])[0].data
-                im = axs_sub.imshow(el_map, cmap='viridis')#cmaps[(i*ncol)+j])
+                if cmap is not None:
+                    c = cmap
+                else:
+                    c=cmaps[(i*n_cols)+j]
+                im = sns.heatmap(el_map, cmap=c,square=True, ax=axs_sub)
                 axs_sub.set_yticks([])
                 axs_sub.set_xticks([])
-                axs_sub.set_title(el, fontsize=16)
-                fig.colorbar(im, ax=axs_sub, shrink=0.75)
+                axs_sub.set_title(el, fontsize=15)
+                #fig.colorbar(im, ax=axs_sub, shrink=0.75)
 
     fig.subplots_adjust(wspace=0.11, hspace=0.)
+    fig.tight_layout()
     
     if save is not None:
         fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
         
     plt.show()
     
-def plot_intensity_np(dataset, feature_list, save=None, **kwargs):
-    n_cols = len(feature_list)
-    fig, axs = plt.subplots(1, ncols=n_cols, sharex=True, sharey=True, 
-                            figsize=(n_cols*2,2), dpi=100, **kwargs)
-    for col in range(len(feature_list)):
-        axs[col].set_title(feature_list[col])
-        axs[col].imshow(dataset[:,:,col], cmap='viridis')
+def plot_intensity_np(dataset, element_list, cmap=None, save=None, **kwargs):   
+    num_peak = len(element_list)
+    if num_peak > 4:
+        n_rows = (num_peak+3)//4
+        n_cols = 4
+    else:
+        n_rows = 1
+        n_cols = num_peak
     
+    c = mcolors.ColorConverter().to_rgb
+    # color = sns.color_palette("Spectral", as_cmap=True)
+    color = plt.get_cmap('hsv')
+    cmaps = []
+    for i in range(num_peak):
+        cmaps.append(make_colormap([c('k'), color(i/num_peak)[:3], 1, color(i/num_peak)[:3]]))
+        
+    fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True, 
+                            figsize=(4*n_cols,3.*n_rows))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            cur_peak = (i*n_cols)+j
+            if cur_peak>num_peak-1: # delete the extra subfigures
+                fig.delaxes(axs[i,j])
+            else:
+                if num_peak > 4:
+                    axs_sub = axs[i,j]
+                elif num_peak==1:
+                    axs_sub = axs
+                else:
+                    axs_sub = axs[j]
+                    
+                el = element_list[cur_peak]
+                el_map = dataset[:,:, cur_peak]
+                if cmap is None:
+                    c=cmaps[(i*n_cols)+j]
+                else:
+                    c=cmap
+                im = sns.heatmap(el_map, cmap=c,square=True, ax=axs_sub)
+                axs_sub.set_yticks([])
+                axs_sub.set_xticks([])
+                axs_sub.set_title(el, fontsize=15)
+                #fig.colorbar(im, ax=axs_sub, shrink=0.75)
+
     fig.subplots_adjust(wspace=0.11, hspace=0.)
-    plt.show()
+    fig.tight_layout()
+    
     if save is not None:
         fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
+        
+    plt.show()
   
 
 def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
