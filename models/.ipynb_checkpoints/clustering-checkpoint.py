@@ -3,7 +3,7 @@
 
 import sys
 sys.path.append('../')
-from load_dataset.exhaust import SEMDataset, peak_dict
+from load_dataset.exhaust import SEMDataset, peak_dict, make_colormap
 import hyperspy.api as hs
 
 import numpy as np
@@ -22,6 +22,7 @@ from matplotlib.colors import LogNorm
 import matplotlib.patches as patches
 from matplotlib.patches import Ellipse
 from  matplotlib import gridspec
+import matplotlib.colors as mcolors
 import seaborn as sns
 import plotly
 import plotly.graph_objects as go
@@ -324,7 +325,7 @@ class PhaseClassifier(object):
 #################
     
     def plot_latent_space(self, ax=None, save=None, **kwargs):
-        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=150, **kwargs)
+        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=100, **kwargs)
         ax = axs or plt.gca()
         label = self.model.predict(self.latent)
         
@@ -500,7 +501,7 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
-        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,3), dpi=96,
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(10,3), dpi=96,
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
         
         phase_color = plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1)
@@ -516,7 +517,7 @@ class PhaseClassifier(object):
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
-        axs[1].set_title('BSE + Binary Map',fontsize=10)
+        axs[1].set_title('SE + Binary Map',fontsize=10)
         
         intensity = edx_profile['intensity'].to_numpy()
         axs[2].set_xticks(np.arange(0, 11, step=1))
@@ -528,8 +529,9 @@ class PhaseClassifier(object):
                                          step=int((intensity.max()/5))), fontsize=8)
         
         offset = self.edx.axes_manager[2].offset
-        axs[2].set_xlim(offset,8)
-        axs[2].set_xlabel('Energy axis / keV', fontsize=10)
+        axs[2].set_xlim(0,8)
+        axs[2].set_ylim(None,intensity.max()*1.2)
+        axs[2].set_xlabel('Energy / keV', fontsize=10)
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
         if self.n_components <= 10:
@@ -544,7 +546,7 @@ class PhaseClassifier(object):
         for el in self.peak_list:
             peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
             axs[2].vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
-            axs[2].text(self.peak_dict[el]-0.125, peak+(int(intensity.max())/20), el, rotation='vertical', fontsize=7.5)
+            axs[2].text(self.peak_dict[el]-0.125, peak+(int(intensity.max())/10), el, rotation='vertical', fontsize=7.5)
         
         # fig.subplots_adjust(left=0.1)
         plt.tight_layout()
