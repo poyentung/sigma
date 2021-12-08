@@ -133,6 +133,8 @@ class Experiment(object):
             self.criterion = nn.MSELoss() 
         elif criterion=='BCE':   
             self.criterion = nn.BCELoss() 
+        elif criterion=='L1':   
+            self.criterion = nn.L1Loss() 
             
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay

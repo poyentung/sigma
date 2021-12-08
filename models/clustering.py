@@ -3,7 +3,7 @@
 
 import sys
 sys.path.append('../')
-from load_dataset.exhaust import SEMDataset, peak_dict
+from load_dataset.exhaust import SEMDataset, peak_dict, make_colormap
 import hyperspy.api as hs
 
 import numpy as np
@@ -22,8 +22,12 @@ from matplotlib.colors import LogNorm
 import matplotlib.patches as patches
 from matplotlib.patches import Ellipse
 from  matplotlib import gridspec
+import matplotlib.colors as mcolors
 import seaborn as sns
+import plotly
 import plotly.graph_objects as go
+import plotly.express as px
+
 
 
 class PhaseClassifier(object):
@@ -321,7 +325,7 @@ class PhaseClassifier(object):
 #################
     
     def plot_latent_space(self, ax=None, save=None, **kwargs):
-        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=150, **kwargs)
+        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=100, **kwargs)
         ax = axs or plt.gca()
         label = self.model.predict(self.latent)
         
@@ -336,6 +340,19 @@ class PhaseClassifier(object):
                 self.draw_ellipse(pos, covar, alpha= 0.12, facecolor='slategrey', zorder=-10)
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
+            
+    def plot_latent_density(self, bins=50):
+        z = np.histogram2d(x=self.latent[:,0], y=self.latent[:,1],bins=bins)[0]
+        sh_0, sh_1 = z.shape
+        x, y = np.linspace(self.latent[:,0].min(), self.latent[:,0].max(), sh_0), np.linspace(self.latent[:,1].min(), self.latent[:,1].max(), sh_1)
+        fig = go.Figure(data=[go.Surface(z=z.T, 
+                                         x=x,
+                                         y=y,
+                                         colorscale ='RdBu_r')])
+        fig.update_layout(title='Density of pixels in latent space', autosize=True,
+                          width=500, height=500,
+                          margin=dict(l=65, r=50, b=65, t=90))
+        fig.show()
     
     
     def draw_ellipse(self, position, covariance, ax=None, **kwargs):
@@ -438,15 +455,19 @@ class PhaseClassifier(object):
     
     
     
-    def plot_phase_map(self, save=None, **kwargs):
+    def plot_phase_map(self, not_to_show=[],save=None, **kwargs):
         
         img = self.bse.data
         phase = self.model.predict(self.latent).reshape(self.height, self.width)
     
-        fig, axs = plt.subplots(nrows=1,ncols=2,sharey=True,figsize=(8,16),**kwargs)
-    
+        fig, axs = plt.subplots(nrows=1,ncols=2,sharey=True,figsize=(8,4), dpi=100, **kwargs)
+        
+        for i in not_to_show:
+            phase[np.where(phase==i)]=0
+            
         axs[0].imshow(img,cmap='gray',interpolation='none')
-        axs[0].set_title('BSE')
+        axs[0].set_title('SE')
+        axs[0].axis('off') 
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
         
@@ -455,8 +476,9 @@ class PhaseClassifier(object):
                           norm=self.color_norm, alpha=0.75)
         else:
             axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
-                          alpha=0.75, norm=self.color_norm)
-        axs[1].set_title('Phase map')
+                          alpha=0.6, norm=self.color_norm)
+        axs[1].axis('off')   
+        axs[1].set_title('Cluster map')
     
         fig.subplots_adjust(wspace=0.05, hspace=0.)
         plt.show()
@@ -466,7 +488,8 @@ class PhaseClassifier(object):
     
     
     
-    def plot_binary_map_edx_profile(self, cluster_num, 
+    def plot_binary_map_edx_profile(self, 
+                                    cluster_num, 
                                     binary_filter_args={'threshold':0.8, 
                                                         'denoise':False, 'keep_fraction':0.13, 
                                                         'binary_filter_threshold':0.2},
@@ -476,10 +499,18 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
+<<<<<<< HEAD
         fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(12,3.2), dpi=96,
+=======
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(10,3), dpi=96,
+>>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
-
-        axs[0].imshow(binary_map, interpolation='none', alpha=1)
+        
+        phase_color = plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1)
+        c = mcolors.ColorConverter().to_rgb
+        cmap = make_colormap([c('k'), phase_color[:3], 1, phase_color[:3]])
+        
+        axs[0].imshow(binary_map, cmap=cmap)
         axs[0].set_title(f'Binary map (cluster {cluster_num})',fontsize=10)
         axs[0].axis('off')
         axs[0].set_aspect('equal', 'box')
@@ -488,7 +519,7 @@ class PhaseClassifier(object):
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
-        axs[1].set_title('BSE + Binary Map',fontsize=10)
+        axs[1].set_title('SE + Binary Map',fontsize=10)
         
         intensity = edx_profile['intensity'].to_numpy()
         axs[2].set_xticks(np.arange(0, 11, step=1))
@@ -502,7 +533,11 @@ class PhaseClassifier(object):
         offset = self.edx.axes_manager[2].offset
         axs[2].set_xlim(0,8)
         axs[2].set_ylim(None,intensity.max()*1.2)
+<<<<<<< HEAD
         axs[2].set_xlabel('Energy axis / keV', fontsize=10)
+=======
+        axs[2].set_xlabel('Energy / keV', fontsize=10)
+>>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
         if self.n_components <= 10:
@@ -517,7 +552,7 @@ class PhaseClassifier(object):
         for el in self.peak_list:
             peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
             axs[2].vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
-            axs[2].text(self.peak_dict[el]-0.125, peak+(int(intensity.max())/20), el, rotation='vertical', fontsize=7.5)
+            axs[2].text(self.peak_dict[el]-0.125, peak+(int(intensity.max())/10), el, rotation='vertical', fontsize=7.5)
         
         # fig.subplots_adjust(left=0.1)
         plt.tight_layout()
@@ -559,41 +594,80 @@ class PhaseClassifier(object):
         plt.show()
         
     def plot_unmixed_profile(self, components, peak_list = []):
-            if len(peak_list) == 0:
-                peak_list = self.peak_list
-            cpnt_num = len(components.columns.to_list())
-            if cpnt_num > 4:
-                n_rows = (cpnt_num+3)//4
-                n_cols = 4
-            else:
-                n_rows = 1
-                n_cols = cpnt_num
+        if len(peak_list) == 0:
+            peak_list = self.peak_list
+        cpnt_num = len(components.columns.to_list())
+        if cpnt_num > 4:
+            n_rows = (cpnt_num+3)//4
+            n_cols = 4
+        else:
+            n_rows = 1
+            n_cols = cpnt_num
 
-            fig, axs = plt.subplots(n_rows, n_cols,figsize=(n_cols*3.6, n_rows*2.6),dpi=150)
-            for row in range(n_rows):
-                for col in range(n_cols):
-                    cur_cpnt = (row*n_cols)+col
-                    if cur_cpnt>cpnt_num-1: # delete the extra subfigures
-                        fig.delaxes(axs[row,col]) 
+        fig, axs = plt.subplots(n_rows, n_cols,figsize=(n_cols*3.6, n_rows*2.6),dpi=150)
+        for row in range(n_rows):
+            for col in range(n_cols):
+                cur_cpnt = (row*n_cols)+col
+                if cur_cpnt>cpnt_num-1: # delete the extra subfigures
+                    fig.delaxes(axs[row,col]) 
+                else:
+                    cpnt = f'cpnt_{cur_cpnt}'
+                    if cpnt_num > 4:
+                        axs_sub = axs[row,col]
                     else:
-                        cpnt = f'cpnt_{cur_cpnt}'
-                        if cpnt_num > 4:
-                            axs_sub = axs[row,col]
-                        else:
-                            axs_sub = axs[col]
-                        axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
-                        axs_sub.set_xlim(0,8)
-                        axs_sub.set_ylabel('Intensity')
-                        axs_sub.set_xlabel('Energy (keV)')
-                        axs_sub.set_title(f'cpnt_{cur_cpnt}')
+                        axs_sub = axs[col]
+                    axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
+                    axs_sub.set_xlim(0,8)
+                    axs_sub.set_ylabel('Intensity')
+                    axs_sub.set_xlabel('Energy (keV)')
+                    axs_sub.set_title(f'cpnt_{cur_cpnt}')
 
-                        zero_energy_idx = np.where(np.array(self.energy_axis).round(2)==0)[0][0]
-                        intensity = components[cpnt].to_numpy()
-                        for el in peak_list:
-                            peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
-                            axs_sub.vlines(self.peak_dict[el], 0, 0.9*peak, linewidth=1, color = 'grey', linestyles='dashed')
-                            axs_sub.text(self.peak_dict[el]-0.18, peak+(intensity.max()/15), el, rotation='vertical', fontsize=8)
+                    zero_energy_idx = np.where(np.array(self.energy_axis).round(2)==0)[0][0]
+                    intensity = components[cpnt].to_numpy()
+                    for el in peak_list:
+                        peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
+                        axs_sub.vlines(self.peak_dict[el], 0, 0.9*peak, linewidth=1, color = 'grey', linestyles='dashed')
+                        axs_sub.text(self.peak_dict[el]-0.18, peak+(intensity.max()/15), el, rotation='vertical', fontsize=8)
 
+<<<<<<< HEAD
             fig.subplots_adjust(hspace=0.3, wspace=0.)
             plt.tight_layout()
             plt.show()
+=======
+        fig.subplots_adjust(hspace=0.3, wspace=0.)
+        plt.tight_layout()
+        plt.show()
+    
+    
+    def plot_edx_profile(self, cluster_num, peak_list, binary_filter_args):
+        edx_profile = self.get_binary_map_edx_profile(cluster_num, **binary_filter_args)[2]
+        intensity = edx_profile['intensity'].to_numpy()
+        
+        fig, axs = plt.subplots(1,1,figsize=(4,2),dpi=150)
+        axs.set_xticks(np.arange(0, 12, step=1))
+        axs.set_yticks(np.arange(0, int(intensity.max())+1, step=int((intensity.max()/5))))
+
+        axs.set_xticklabels(np.arange(0, 12, step=1), fontsize=8)
+        axs.set_yticklabels(np.arange(0, int(intensity.max())+1, step=int((intensity.max()/5))), fontsize=8)
+
+        offset = self.edx.axes_manager[2].offset
+        axs.set_xlim(0,8)
+        axs.set_ylim(None, intensity.max()*1.25)
+        axs.set_xlabel('Energy axis / keV', fontsize=10)
+        axs.set_ylabel('X-rays / Counts', fontsize=10)
+
+        if self.n_components <= 10:
+            axs.plot(edx_profile['energy'], edx_profile['intensity'], 
+                    linewidth=1,color=plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
+        else:
+            axs.plot(edx_profile['energy'], edx_profile['intensity'], 
+                        linewidth=1,
+                        color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
+
+        zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        for el in peak_list:
+            peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
+            axs.vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
+            axs.text(self.peak_dict[el]-0.075, peak+(int(intensity.max())/20), el, rotation='vertical', fontsize=7.5)
+        plt.show()
+>>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
