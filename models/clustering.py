@@ -476,7 +476,7 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
-        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(9,3), dpi=96,
+        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(12,3.2), dpi=96,
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
 
         axs[0].imshow(binary_map, interpolation='none', alpha=1)
@@ -500,7 +500,8 @@ class PhaseClassifier(object):
                                          step=int((intensity.max()/5))), fontsize=8)
         
         offset = self.edx.axes_manager[2].offset
-        axs[2].set_xlim(offset,8)
+        axs[2].set_xlim(0,8)
+        axs[2].set_ylim(None,intensity.max()*1.2)
         axs[2].set_xlabel('Energy axis / keV', fontsize=10)
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
