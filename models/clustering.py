@@ -499,11 +499,8 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
-<<<<<<< HEAD
-        fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(12,3.2), dpi=96,
-=======
+
         fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(10,3), dpi=96,
->>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
         
         phase_color = plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1)
@@ -533,11 +530,7 @@ class PhaseClassifier(object):
         offset = self.edx.axes_manager[2].offset
         axs[2].set_xlim(0,8)
         axs[2].set_ylim(None,intensity.max()*1.2)
-<<<<<<< HEAD
-        axs[2].set_xlabel('Energy axis / keV', fontsize=10)
-=======
         axs[2].set_xlabel('Energy / keV', fontsize=10)
->>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
         axs[2].set_ylabel('X-rays / Counts', fontsize=10)
         
         if self.n_components <= 10:
@@ -629,11 +622,6 @@ class PhaseClassifier(object):
                         axs_sub.vlines(self.peak_dict[el], 0, 0.9*peak, linewidth=1, color = 'grey', linestyles='dashed')
                         axs_sub.text(self.peak_dict[el]-0.18, peak+(intensity.max()/15), el, rotation='vertical', fontsize=8)
 
-<<<<<<< HEAD
-            fig.subplots_adjust(hspace=0.3, wspace=0.)
-            plt.tight_layout()
-            plt.show()
-=======
         fig.subplots_adjust(hspace=0.3, wspace=0.)
         plt.tight_layout()
         plt.show()
@@ -670,4 +658,3 @@ class PhaseClassifier(object):
             axs.vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
             axs.text(self.peak_dict[el]-0.075, peak+(int(intensity.max())/20), el, rotation='vertical', fontsize=7.5)
         plt.show()
->>>>>>> 05a2dc682288f7f3b3a3b5a1f347f79d9eb51703
