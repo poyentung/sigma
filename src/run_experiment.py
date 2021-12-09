@@ -93,8 +93,9 @@ class Experiment(object):
         #Set Device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'device: {str(self.device)}')
-         
+        
         #Set Model
+        self.model_name = model.__name__
         self.model = model(in_channel=self.chosen_dataset[0].shape[-1],
                            **model_args)
         print('num_parameters:',sum(p.numel() for p in self.model.parameters()))
@@ -124,20 +125,22 @@ class Experiment(object):
         
     def run_model(self, num_epochs:int, patience:int, batch_size:int,
                  learning_rate=1e-4, weight_decay=0.0, task='train_eval',
-                 noise_added=None, criterion='MSE', print_latent=False,
+                 noise_added=None, criterion='MSE', KLD_lambda=1e-4, print_latent=False,
                  lr_scheduler_args = {'factor':0.5, 'verbose':True, 
                                       'patience':5,'threshold':1e-2, 
                                       'min_lr':1e-7,}): 
-        
+        # Loss functions
         if criterion=='MSE':
             self.criterion = nn.MSELoss() 
         elif criterion=='BCE':   
             self.criterion = nn.BCELoss() 
         elif criterion=='L1':   
             self.criterion = nn.L1Loss() 
-            
+        
+
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
+        self.KLD_lambda = KLD_lambda
         self.num_epochs = num_epochs
         print(f'num_epochs: {self.num_epochs}')
         self.batch_size = batch_size
@@ -214,14 +217,21 @@ class Experiment(object):
     
     def train(self, dataloader, epoch):
         self.model.train()
-        epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=True)
+        if self.model_name == 'AutoEocoder':
+            epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=True)
+        elif self.model_name == 'VariationalAutoEncoder':
+            epoch_loss = self.iterate_through_batches_VAE(self.model, dataloader, epoch, training=True)
+
         self.train_loss[epoch] = epoch_loss
         
     
     def test(self, dataloader, epoch):
         self.model.eval()
         with torch.no_grad():
-            epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
+            if self.model_name == 'AutoEocoder':
+                epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
+            elif self.model_name == 'VariationalAutoEncoder':
+                epoch_loss = self.iterate_through_batches_VAE(self.model, dataloader, epoch, training=False)
         self.test_loss[epoch] = epoch_loss
         self.scheduler.step(epoch_loss)
         self.early_stopping_check(epoch)
@@ -262,7 +272,12 @@ class Experiment(object):
         # axs.set_aspect(1)
         axs.set_title(f'Epoch{epoch+1}')
         plt.show()
-            
+
+
+    def KLD_loss(self, mu, logvar):
+        loss = -0.5 * torch.mean(1 + logvar - mu**2 -  logvar.exp())
+        return loss
+
     def iterate_through_batches(self, model, dataloader, epoch, training):
         epoch_loss = list()
         
@@ -298,7 +313,43 @@ class Experiment(object):
         #Return loss and classification predictions and classification gr truth
         return sum(epoch_loss)/len(epoch_loss)
     
-    
+    def iterate_through_batches_VAE(self, model, dataloader, epoch, training):
+        epoch_loss = list()
+        
+        # Initialize numpy arrays for storing results. examples x labels
+        # Do NOT use concatenation, or else you will have memory fragmentation.
+        disable = False if training else True
+        with tqdm(dataloader, unit="batch", disable=disable) as tepoch:
+            for batch_idx, batch in enumerate(tepoch):
+                if training:
+                    tepoch.set_description(f"Epoch [ {epoch:02} / {self.num_epochs:02} ]")
+                x = batch.to(self.device)
+                
+                self.optimizer.zero_grad()
+                if training:
+                    mu, logvar, z, x_recon = model(x)
+                else:
+                    with torch.set_grad_enabled(False):
+                        mu, logvar, z, x_recon = model(x)
+
+                recon_loss = self.criterion(x_recon, x)
+                KLD_loss = self.KLD_loss(mu, logvar)
+                loss = self.criterion(x_recon, x) + self.KLD_loss(mu, logvar) * self.KLD_lambda
+
+                if training:
+                    loss.backward()
+                    self.optimizer.step()   
+            
+                epoch_loss.append(loss.detach().item())
+                torch.cuda.empty_cache()
+            
+            avg_loss = sum(epoch_loss)/len(epoch_loss)
+            if training:
+                tepoch.set_postfix(train_loss=f'{avg_loss:.6f}')
+                
+        #Return loss and classification predictions and classification gr truth
+        return sum(epoch_loss)/len(epoch_loss)
+
     def load_trained_model(self, old_model_path):
         print(f'Loading model parameters from {old_model_path}')
         self.old_model_path = old_model_path
