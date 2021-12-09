@@ -217,7 +217,7 @@ class Experiment(object):
     
     def train(self, dataloader, epoch):
         self.model.train()
-        if self.model_name == 'AutoEocoder':
+        if self.model_name == 'AutoEncoder':
             epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=True)
         elif self.model_name == 'VariationalAutoEncoder':
             epoch_loss = self.iterate_through_batches_VAE(self.model, dataloader, epoch, training=True)
@@ -228,7 +228,7 @@ class Experiment(object):
     def test(self, dataloader, epoch):
         self.model.eval()
         with torch.no_grad():
-            if self.model_name == 'AutoEocoder':
+            if self.model_name == 'AutoEncoder':
                 epoch_loss = self.iterate_through_batches(self.model, dataloader, epoch, training=False)
             elif self.model_name == 'VariationalAutoEncoder':
                 epoch_loss = self.iterate_through_batches_VAE(self.model, dataloader, epoch, training=False)
