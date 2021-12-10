@@ -267,7 +267,7 @@ class Experiment(object):
             
     def plot_latent(self, epoch):
         latent = self.get_latent()
-        fig, axs = plt.subplots(1,1,figsize=(4,4),dpi=100)
+        fig, axs = plt.subplots(1,1,figsize=(3,3),dpi=100)
         sns.scatterplot(latent[:,0], latent[:,1],s=0.5,alpha=0.1,ax=axs,color='r')
         # axs.set_aspect(1)
         axs.set_title(f'Epoch{epoch+1}')
@@ -284,7 +284,7 @@ class Experiment(object):
         # Initialize numpy arrays for storing results. examples x labels
         # Do NOT use concatenation, or else you will have memory fragmentation.
         disable = False if training else True
-        with tqdm(dataloader, unit="batch", disable=disable) as tepoch:
+        with tqdm(dataloader, unit="batch", disable=disable, leave=False) as tepoch:
             for batch_idx, batch in enumerate(tepoch):
                 if training:
                     tepoch.set_description(f"Epoch [ {epoch:02} / {self.num_epochs:02} ]")
@@ -319,7 +319,7 @@ class Experiment(object):
         # Initialize numpy arrays for storing results. examples x labels
         # Do NOT use concatenation, or else you will have memory fragmentation.
         disable = False if training else True
-        with tqdm(dataloader, unit="batch", disable=disable) as tepoch:
+        with tqdm(dataloader, unit="batch", disable=disable, leave=False) as tepoch:
             for batch_idx, batch in enumerate(tepoch):
                 if training:
                     tepoch.set_description(f"Epoch [ {epoch:02} / {self.num_epochs:02} ]")
