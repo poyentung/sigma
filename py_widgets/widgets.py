@@ -14,6 +14,7 @@ import seaborn as sns
 import altair as alt
 import ipywidgets as widgets
 from IPython.display import display
+from matplotlib import cm
 from  matplotlib import pyplot as plt
 
 def search_energy_peak():
@@ -33,12 +34,22 @@ def search_energy_peak():
     display(out)
 
 def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
-    latent, dataset, feature_list = PC.latent, PC.dataset, PC.sem.feature_list
-    combined = np.concatenate([latent,dataset.reshape(-1,dataset.shape[-1]).round(2)],axis=1)
-    sampled_combined = random.choices(combined, k=latent.shape[0]//(ratio_to_be_shown**-1))
+    # create color codes
+    phase_colors = []
+    for i in range(PC.n_components):
+          r,g,b = cm.get_cmap('nipy_spectral')(i*(PC.n_components-1)**-1)[:3]
+          r,g,b = int(r*255),int(g*255), int(b*255)
+          color = "#{:02x}{:02x}{:02x}".format(r,g,b)
+          phase_colors.append(color)
+    domain = [i for i in range(PC.n_components)]
+    range_ = phase_colors
+    
+    latent, dataset, feature_list, labels = PC.latent, PC.dataset, PC.sem.feature_list, PC.labels
+    combined = np.concatenate([latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+    sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
     sampled_combined = np.array(sampled_combined)
 
-    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list, index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
+    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list+['cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
     alt.data_transformers.disable_max_rows()
     
     # Brush
@@ -51,7 +62,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
         ).encode(
             x='x:Q',
             y='y:Q', # use min extent to stabilize axis title placement
-            color=alt.condition(brush, alt.value('steelblue'), alt.value('grey'))
+            color=alt.condition(brush, alt.Color('cluster_id:N', scale=alt.Scale(domain=domain,range=range_)), alt.value('grey'))
         ).properties( 					
             width=400,
             height=400
@@ -70,13 +81,14 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     text = alt.hconcat(*columns) # Combine bars
 
     # Build chart
-    alt.hconcat(
-        points,
-        text
-    ).resolve_legend(
-        color="independent"
-    ).configure_view(strokeWidth=0)
+    chart = alt.hconcat(
+                points,
+                text
+            ).resolve_legend(
+                color="independent"
+            ).configure_view(strokeWidth=0)
     
+    return chart
     
 def show_cluster_distribution(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
