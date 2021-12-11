@@ -49,7 +49,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
     sampled_combined = np.array(sampled_combined)
 
-    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list+['cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
+    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list+['Cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
     alt.data_transformers.disable_max_rows()
     
     # Brush
@@ -62,7 +62,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
         ).encode(
             x='x:Q',
             y='y:Q', # use min extent to stabilize axis title placement
-            color=alt.condition(brush, alt.Color('cluster_id:N', scale=alt.Scale(domain=domain,range=range_)), alt.value('grey'))
+            color=alt.condition(brush, alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)), alt.value('grey'))
         ).properties( 					
             width=400,
             height=400
