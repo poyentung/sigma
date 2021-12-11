@@ -8,8 +8,10 @@ from models.clustering import PhaseClassifier
 
 import numpy as np
 import pandas as pd
+import random
 import hyperspy.api as hs
 import seaborn as sns
+import altair as alt
 import ipywidgets as widgets
 from IPython.display import display
 from  matplotlib import pyplot as plt
