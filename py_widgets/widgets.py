@@ -30,6 +30,52 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
+def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
+    latent, dataset, feature_list = PC.latent, PC.dataset, PC.sem.feature_list
+    combined = np.concatenate([latent,dataset.reshape(-1,dataset.shape[-1]).round(2)],axis=1)
+    sampled_combined = random.choices(combined, k=latent.shape[0]//(ratio_to_be_shown**-1))
+    sampled_combined = np.array(sampled_combined)
+
+    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list, index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
+    alt.data_transformers.disable_max_rows()
+    
+    # Brush
+    brush = alt.selection(type='interval')
+    
+    # Points
+    points=alt.Chart(source).mark_circle(
+            size=4,
+            opacity=0.2
+        ).encode(
+            x='x:Q',
+            y='y:Q', # use min extent to stabilize axis title placement
+            color=alt.condition(brush, alt.value('steelblue'), alt.value('grey'))
+        ).properties( 					
+            width=400,
+            height=400
+        ).properties(title=alt.TitleParams(text='Latent space')
+        ).add_selection(brush)
+    # Base chart for data tables
+    ranked_text = alt.Chart(source).mark_bar().transform_filter(
+        brush
+    )
+
+    # Data Bars
+    columns=list()
+    for item in feature_list:
+      columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=(0, 1)))
+                      ).properties(title=alt.TitleParams(text=item)))
+    text = alt.hconcat(*columns) # Combine bars
+
+    # Build chart
+    alt.hconcat(
+        points,
+        text
+    ).resolve_legend(
+        color="independent"
+    ).configure_view(strokeWidth=0)
+    
+    
 def show_cluster_distribution(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
     multi_select_cluster = widgets.SelectMultiple(options=['All']+cluster_options)
