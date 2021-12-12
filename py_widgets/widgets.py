@@ -75,8 +75,9 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
 
     # Data Bars
     columns=list()
+    domain_barchart=(0,1) if PC.dataset.max()>1.0 else (-4,4)
     for item in feature_list:
-      columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=(0, 1)))
+      columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=domain_barchart))
                       ).properties(title=alt.TitleParams(text=item)))
     text = alt.hconcat(*columns) # Combine bars
 
