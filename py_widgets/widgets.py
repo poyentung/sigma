@@ -57,15 +57,15 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     
     # Points
     points=alt.Chart(source).mark_circle(
-            size=4,
-            opacity=0.2
+            size=2,
+            opacity=0.7
         ).encode(
             x='x:Q',
             y='y:Q', # use min extent to stabilize axis title placement
             color=alt.condition(brush, alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)), alt.value('grey'))
         ).properties( 					
-            width=400,
-            height=400
+            width=450,
+            height=450
         ).properties(title=alt.TitleParams(text='Latent space')
         ).add_selection(brush)
     # Base chart for data tables
