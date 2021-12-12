@@ -612,7 +612,7 @@ class PhaseClassifier(object):
                         axs_sub = axs[col]
                     axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
                     axs_sub.set_xlim(0,8)
-                    axs_sub.set_ylim(None,components[cpnt].max()*1.25)
+                    axs_sub.set_ylim(None,components[cpnt].max()*1.3)
                     axs_sub.set_ylabel('Intensity')
                     axs_sub.set_xlabel('Energy (keV)')
                     axs_sub.set_title(f'cpnt_{cur_cpnt}')
