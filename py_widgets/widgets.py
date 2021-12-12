@@ -37,7 +37,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     # create color codes
     phase_colors = []
     for i in range(PC.n_components):
-          r,g,b = cm.get_cmap('nipy_spectral')(i*(PC.n_components-1)**-1)[:3]
+          r,g,b = cm.get_cmap(PC.color_palette)(i*(PC.n_components-1)**-1)[:3]
           r,g,b = int(r*255),int(g*255), int(b*255)
           color = "#{:02x}{:02x}{:02x}".format(r,g,b)
           phase_colors.append(color)
