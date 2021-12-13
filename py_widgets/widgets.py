@@ -58,11 +58,11 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     # Points
     points=alt.Chart(source).mark_circle(
             size=2,
-            opacity=0.7
         ).encode(
             x='x:Q',
             y='y:Q', # use min extent to stabilize axis title placement
-            color=alt.condition(brush, alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)), alt.value('grey'))
+            color=alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
+            opacity=alt.condition(brush, alt.value(0.7), alt.value(0.25))
         ).properties( 					
             width=450,
             height=450
