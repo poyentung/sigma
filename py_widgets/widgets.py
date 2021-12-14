@@ -33,7 +33,7 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
-def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
+def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=False):
     # create color codes
     phase_colors = []
     for i in range(PC.n_components):
@@ -45,11 +45,17 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
     range_ = phase_colors
     
     latent, dataset, feature_list, labels = PC.latent, PC.dataset, PC.sem.feature_list, PC.labels
-    combined = np.concatenate([latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+    x_id, y_id = np.meshgrid(range(PC.width), range(PC.height))
+    x_id = x_id.ravel().reshape(-1,1)
+    y_id = y_id.ravel().reshape(-1,1)
+    z_id = (PC.bse.data/PC.bse.data.max()).reshape(-1,1)
+
+    combined = np.concatenate([x_id, y_id, z_id, latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+
     sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
     sampled_combined = np.array(sampled_combined)
 
-    source = pd.DataFrame(sampled_combined, columns=['x','y']+feature_list+['Cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
+    source = pd.DataFrame(sampled_combined, columns=['x_id','y_id','z_id','x','y']+feature_list+['Cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
     alt.data_transformers.disable_max_rows()
     
     # Brush
@@ -68,6 +74,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
             height=450
         ).properties(title=alt.TitleParams(text='Latent space')
         ).add_selection(brush)
+
     # Base chart for data tables
     ranked_text = alt.Chart(source).mark_bar().transform_filter(
         brush
@@ -81,10 +88,33 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25):
                       ).properties(title=alt.TitleParams(text=item)))
     text = alt.hconcat(*columns) # Combine bars
 
+    # Heatmap
+    if show_map == True:
+        bse_df = pd.DataFrame({'x_bse': x_id.ravel(),'y_bse':y_id.ravel(), 'z_bse':z_id.ravel()})
+        bse = alt.Chart(bse_df).mark_circle(size=3).encode(
+                    x=alt.X('x_bse:O',axis=None),
+                    y=alt.Y('y_bse:O',axis=None),
+                    color= alt.Color('z_bse:Q', scale=alt.Scale(scheme='greys', domain=[1.0,0.0]))
+                    ).properties(
+                        width=250,
+                        height=250
+                    )
+        heatmap = alt.Chart(source).mark_circle(size=3).encode(
+                    x=alt.X('x_id:O',axis=None),
+                    y=alt.Y('y_id:O',axis=None),
+                    color= alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
+                    opacity=alt.condition(brush, alt.value(1), alt.value(0))
+                    ).properties(
+                        width=250,
+                        height=250
+                    ).add_selection(brush)
+        heatmap_bse = bse + heatmap
+    
+    final_widgets = [points,heatmap_bse,text] if show_map == True else [points,text]
+
     # Build chart
     chart = alt.hconcat(
-                points,
-                text
+                *final_widgets
             ).resolve_legend(
                 color="independent"
             ).configure_view(strokeWidth=0)
