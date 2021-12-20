@@ -64,15 +64,17 @@ class SEMDataset(object):
         self.bse_bin = self.bse.rebin(scale=(x, y))
         return (self.edx_bin, self.bse_bin)
     
-    
     def remove_fist_peak(self, end:float):
         print(f'Removing the fisrt peak by setting the intensity to zero until the energy of {end} keV.')
         for edx in (self.edx, self.edx_bin):
-            scale = edx.axes_manager[2].scale
-            offset = edx.axes_manager[2].offset
-            end_ = int((end-offset)/scale)
-            for i in range(end_):
-                edx.isig[i] = 0
+            if edx is None: 
+                continue
+            else:
+            	scale = edx.axes_manager[2].scale
+            	offset = edx.axes_manager[2].offset
+            	end_ = int((end-offset)/scale)
+            	for i in range(end_):
+            		edx.isig[i] = 0
     
     def peak_intensity_normalisation(self) -> EDSSEMSpectrum:
         if self.edx_bin:
@@ -241,13 +243,13 @@ def plot_sum_spectrum(edx, xray_lines=True):
     energy_axis = [((a*scale) + offset) for a in range(0,size)]
     
     fig = go.Figure(data=go.Scatter(x=energy_axis, y=edx.sum().data),
-                    layout_xaxis_range=[offset,8],
+                    layout_xaxis_range=[offset,10],
                     layout=go.Layout(title="EDX Sum Spectrum",
                                      title_x=0.5,
                                      xaxis_title="Energy / keV",
                                      yaxis_title="Counts",
-                                     width=900,
-                                     height=500))
+                                     width=600,
+                                     height=400))
     
     if xray_lines:
         feature_list = edx.metadata.Sample.xray_lines
