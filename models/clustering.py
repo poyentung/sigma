@@ -470,7 +470,7 @@ class PhaseClassifier(object):
         axs[0].axis('off') 
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
-        
+        `
         if self.n_components <= 10:
             axs[1].imshow(phase,cmap=self.color_palette ,interpolation='none',
                           norm=self.color_norm, alpha=0.75)
