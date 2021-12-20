@@ -8,10 +8,13 @@ from models.clustering import PhaseClassifier
 
 import numpy as np
 import pandas as pd
+import random
 import hyperspy.api as hs
 import seaborn as sns
+import altair as alt
 import ipywidgets as widgets
 from IPython.display import display
+from matplotlib import cm
 from  matplotlib import pyplot as plt
 
 def search_energy_peak():
@@ -30,6 +33,94 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
+def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=False):
+    # create color codes
+    phase_colors = []
+    for i in range(PC.n_components):
+          r,g,b = cm.get_cmap(PC.color_palette)(i*(PC.n_components-1)**-1)[:3]
+          r,g,b = int(r*255),int(g*255), int(b*255)
+          color = "#{:02x}{:02x}{:02x}".format(r,g,b)
+          phase_colors.append(color)
+    domain = [i for i in range(PC.n_components)]
+    range_ = phase_colors
+    
+    latent, dataset, feature_list, labels = PC.latent, PC.dataset, PC.sem.feature_list, PC.labels
+    x_id, y_id = np.meshgrid(range(PC.width), range(PC.height))
+    x_id = x_id.ravel().reshape(-1,1)
+    y_id = y_id.ravel().reshape(-1,1)
+    z_id = (PC.bse.data/PC.bse.data.max()).reshape(-1,1)
+
+    combined = np.concatenate([x_id, y_id, z_id, latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+
+    sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
+    sampled_combined = np.array(sampled_combined)
+
+    source = pd.DataFrame(sampled_combined, columns=['x_id','y_id','z_id','x','y']+feature_list+['Cluster_id'], index=pd.RangeIndex(0, sampled_combined.shape[0], name='pixel'))
+    alt.data_transformers.disable_max_rows()
+    
+    # Brush
+    brush = alt.selection(type='interval')
+    
+    # Points
+    points=alt.Chart(source).mark_circle(
+            size=2,
+        ).encode(
+            x='x:Q',
+            y='y:Q', # use min extent to stabilize axis title placement
+            color=alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
+            opacity=alt.condition(brush, alt.value(0.7), alt.value(0.25))
+        ).properties( 					
+            width=450,
+            height=450
+        ).properties(title=alt.TitleParams(text='Latent space')
+        ).add_selection(brush)
+
+    # Base chart for data tables
+    ranked_text = alt.Chart(source).mark_bar().transform_filter(
+        brush
+    )
+
+    # Data Bars
+    columns=list()
+    domain_barchart=(0,1) if PC.dataset.max()<1.0 else (-4,4)
+    for item in feature_list:
+      columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=domain_barchart))
+                      ).properties(title=alt.TitleParams(text=item)))
+    text = alt.hconcat(*columns) # Combine bars
+
+    # Heatmap
+    if show_map == True:
+        bse_df = pd.DataFrame({'x_bse': x_id.ravel(),'y_bse':y_id.ravel(), 'z_bse':z_id.ravel()})
+        bse = alt.Chart(bse_df).mark_circle(size=3).encode(
+                    x=alt.X('x_bse:O',axis=None),
+                    y=alt.Y('y_bse:O',axis=None),
+                    color= alt.Color('z_bse:Q', scale=alt.Scale(scheme='greys', domain=[1.0,0.0]))
+                    ).properties(
+                        width=250,
+                        height=250
+                    )
+        heatmap = alt.Chart(source).mark_circle(size=3).encode(
+                    x=alt.X('x_id:O',axis=None),
+                    y=alt.Y('y_id:O',axis=None),
+                    color= alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
+                    opacity=alt.condition(brush, alt.value(1), alt.value(0))
+                    ).properties(
+                        width=250,
+                        height=250
+                    ).add_selection(brush)
+        heatmap_bse = bse + heatmap
+    
+    final_widgets = [points,heatmap_bse,text] if show_map == True else [points,text]
+
+    # Build chart
+    chart = alt.hconcat(
+                *final_widgets
+            ).resolve_legend(
+                color="independent"
+            ).configure_view(strokeWidth=0)
+    
+    return chart
+    
 def show_cluster_distribution(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
     multi_select_cluster = widgets.SelectMultiple(options=['All']+cluster_options)
@@ -86,8 +177,8 @@ def show_unmixed_weights(weights:pd.DataFrame):
     display(tab)
     
 def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
-    weights_options = components.columns
-    dropdown_cluster = widgets.Dropdown(options=weights_options)
+    components_options = components.columns
+    dropdown_cluster = widgets.Dropdown(options=components_options)
     plots_output = widgets.Output()
     all_output = widgets.Output()
     
@@ -104,6 +195,59 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
     tab = widgets.Tab([all_output, plots_output])
     tab.set_title(0, 'All cpnt')
     tab.set_title(1, 'Single cpnt')
+    display(tab)
+
+def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame, components:pd.DataFrame):
+    # weights
+    weights_options = weights.index
+    multi_select_cluster = widgets.SelectMultiple(options=weights_options)
+    plots_output = widgets.Output()
+    all_output = widgets.Output()
+    
+    with all_output:
+        display(weights)
+        
+    def multi_select_cluster_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            row_index = [cluster for cluster in change.new]
+            display(weights.loc[row_index])
+            for cluster in change.new:
+                num_cpnt = len(weights.columns.to_list())
+                fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
+                axs.bar(np.arange(0,num_cpnt), weights[weights.index == cluster].to_numpy().ravel(), width=0.6)
+                axs.set_xticks(np.arange(0,num_cpnt))
+                axs.set_ylabel('weight of component')
+                axs.set_xlabel('component number')
+                plt.show()
+    
+    multi_select_cluster.observe(multi_select_cluster_eventhandler, names='value')
+
+
+    # compoments
+    components_options = components.columns
+    dropdown_cluster = widgets.Dropdown(options=components_options)
+    plots_output_cpnt = widgets.Output()
+    all_output_cpnt = widgets.Output()
+    
+    with all_output_cpnt:
+        PC.plot_unmixed_profile(components)
+    def dropdown_cluster_eventhandler(change):
+        plots_output_cpnt.clear_output()
+        with plots_output_cpnt:
+            plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
+    
+    dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
+    
+    widget_set = widgets.HBox([multi_select_cluster, dropdown_cluster])
+    display(widget_set)
+
+
+    tab = widgets.Tab([all_output, plots_output, all_output_cpnt, plots_output_cpnt])
+    tab.set_title(0, 'All weights')
+    tab.set_title(1, 'Single weight')    
+    tab.set_title(2, 'All components')
+    tab.set_title(3, 'Single component')
     display(tab)
 
 def show_clusters(PC:PhaseClassifier,binary_filter_args):

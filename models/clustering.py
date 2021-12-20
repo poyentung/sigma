@@ -82,10 +82,10 @@ class PhaseClassifier(object):
         
         if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
             prob_map = self.model.predict_proba(self.latent)
+            self.prob_map = prob_map
             
         self.mu = mu 
         self.labels = labels
-        self.prob_map = prob_map
         
         ### Calcuate peak_dict ###
         self.peak_dict = dict()
@@ -119,33 +119,36 @@ class PhaseClassifier(object):
     def get_binary_map_edx_profile(self, cluster_num=1, threshold=0.8, 
                                    denoise=False,keep_fraction=0.13, 
                                    binary_filter_threshold=0.2):
-        
-        phase = self.model.predict_proba(self.latent)[:,cluster_num]
-        
-        if denoise == False:
-            binary_map = np.where(phase>threshold,1,0).reshape(self.height,self.width)
-            binary_map_indices = np.where(phase.reshape(self.height,self.width)>threshold)
-        
-        else:
-            filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
-            image_fft = fftpack.fft2(filtered_img)
-            image_fft2 = image_fft.copy()
+        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+            phase = self.model.predict_proba(self.latent)[:,cluster_num]
             
-            # Set r and c to be the number of rows and columns of the array.
-            r, c = image_fft2.shape
-        
-            # Set to zero all rows with indices between r*keep_fraction and
-            # r*(1-keep_fraction):
-            image_fft2[int(r*keep_fraction):int(r*(1-keep_fraction))] = 0
-        
-            # Similarly with the columns:
-            image_fft2[:, int(c*keep_fraction):int(c*(1-keep_fraction))] = 0
-        
-            # Transformed the filtered image back to real space
-            image_new = fftpack.ifft2(image_fft2).real
-        
-            binary_map = np.where(image_new<binary_filter_threshold,0,1)
-            binary_map_indices = np.where(image_new>binary_filter_threshold)
+            if denoise == False:
+                binary_map = np.where(phase>threshold,1,0).reshape(self.height,self.width)
+                binary_map_indices = np.where(phase.reshape(self.height,self.width)>threshold)
+            
+            else:
+                filtered_img = np.where(phase<threshold,0,1).reshape(self.height,self.width)
+                image_fft = fftpack.fft2(filtered_img)
+                image_fft2 = image_fft.copy()
+                
+                # Set r and c to be the number of rows and columns of the array.
+                r, c = image_fft2.shape
+            
+                # Set to zero all rows with indices between r*keep_fraction and
+                # r*(1-keep_fraction):
+                image_fft2[int(r*keep_fraction):int(r*(1-keep_fraction))] = 0
+            
+                # Similarly with the columns:
+                image_fft2[:, int(c*keep_fraction):int(c*(1-keep_fraction))] = 0
+            
+                # Transformed the filtered image back to real space
+                image_new = fftpack.ifft2(image_fft2).real
+            
+                binary_map = np.where(image_new<binary_filter_threshold,0,1)
+                binary_map_indices = np.where(image_new>binary_filter_threshold)
+        else:
+            binary_map = (self.model.labels_*np.where(self.model.labels_==cluster_num,1,0)).reshape(self.height,self.width)
+            binary_map_indices = np.where(self.model.labels_.reshape(self.height,self.width)==cluster_num)
             
         # Get edx profile in the filtered phase region
         x_id = binary_map_indices[0].reshape(-1,1)
@@ -206,6 +209,7 @@ class PhaseClassifier(object):
             
         weights = model.fit_transform(edx_profiles_.to_numpy().T)
         components = model.components_
+        self.NMF_recon_error = model.reconstruction_err_
 
         weights = pd.DataFrame(weights.round(3), columns=[f'w_{component_num}' for component_num in range(n_components)],
                                index=[f'cluster_{cluster_num}' for cluster_num in edx_profiles_])
@@ -499,6 +503,7 @@ class PhaseClassifier(object):
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, 
                                                                                       **binary_filter_args)
         
+
         fig, axs = plt.subplots(nrows=1,ncols=3,figsize=(10,3), dpi=96,
                                 gridspec_kw={'width_ratios': [1, 1, 2]},**kwargs) 
         
@@ -610,6 +615,7 @@ class PhaseClassifier(object):
                         axs_sub = axs[col]
                     axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
                     axs_sub.set_xlim(0,8)
+                    axs_sub.set_ylim(None,components[cpnt].max()*1.3)
                     axs_sub.set_ylabel('Intensity')
                     axs_sub.set_xlabel('Energy (keV)')
                     axs_sub.set_title(f'cpnt_{cur_cpnt}')
