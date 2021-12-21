@@ -96,8 +96,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     y=alt.Y('y_bse:O',axis=None),
                     color= alt.Color('z_bse:Q', scale=alt.Scale(scheme='greys', domain=[1.0,0.0]))
                     ).properties(
-                        width=250,
-                        height=250
+                        width=PC.width,
+                        height=PC.height
                     )
         heatmap = alt.Chart(source).mark_circle(size=3).encode(
                     x=alt.X('x_id:O',axis=None),
@@ -105,8 +105,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     color= alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
                     opacity=alt.condition(brush, alt.value(1), alt.value(0))
                     ).properties(
-                        width=250,
-                        height=250
+                        width=PC.width,
+                        height=PC.height
                     ).add_selection(brush)
         heatmap_bse = bse + heatmap
     
@@ -271,7 +271,7 @@ def show_clusters(PC:PhaseClassifier,binary_filter_args):
     display(dropdown_cluster)
     display(plots_output)
     
-def show_clusters(PC:PhaseClassifier,binary_filter_args):
+def show_clusters(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
     multi_select = widgets.SelectMultiple(options=cluster_options)
     plots_output = widgets.Output()
@@ -283,13 +283,12 @@ def show_clusters(PC:PhaseClassifier,binary_filter_args):
         
         with plots_output:
             for cluster in change.new:
-                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]), binary_filter_args=binary_filter_args)
+                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]))
                 
         with profile_output:
             ### X-ray profile ###
             for cluster in change.new:
-                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),
-                                                                 **binary_filter_args)
+                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),use_label=True)
                 plot_profile(edx_profile['energy'], edx_profile['intensity'], PC.peak_list)
         
     multi_select.observe(eventhandler, names='value')
