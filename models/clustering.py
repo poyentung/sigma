@@ -528,12 +528,12 @@ class PhaseClassifier(object):
         
         intensity = edx_profile['intensity'].to_numpy()
         axs[2].set_xticks(np.arange(0, 11, step=1))
-        axs[2].set_yticks(np.arange(0, int(intensity.max())+1, 
-                                    step=int((intensity.max()/5))))
+        axs[2].set_yticks(np.arange(0, int(intensity.max().round())+1, 
+                                    step=int((intensity.max().round()/5))))
         
         axs[2].set_xticklabels(np.arange(0, 11, step=1), fontsize=8)
-        axs[2].set_yticklabels(np.arange(0,  int(intensity.max())+1, 
-                                         step=int((intensity.max()/5))), fontsize=8)
+        axs[2].set_yticklabels(np.arange(0,  int(intensity.max().round())+1, 
+                                         step=int((intensity.max().round()/5))), fontsize=8)
         
         offset = self.edx.axes_manager[2].offset
         axs[2].set_xlim(0,8)
