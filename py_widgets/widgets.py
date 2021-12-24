@@ -50,7 +50,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
     y_id = y_id.ravel().reshape(-1,1)
     z_id = (PC.bse.data/PC.bse.data.max()).reshape(-1,1)
 
-    combined = np.concatenate([x_id, y_id, z_id, latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+    combined = np.concatenate([x_id, y_id, z_id, latent.round(2),dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
 
     sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
     sampled_combined = np.array(sampled_combined)
