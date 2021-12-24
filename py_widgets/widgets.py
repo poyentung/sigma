@@ -200,7 +200,7 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
 
 def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame, components:pd.DataFrame):
     # weights
-    weights.loc['sum'] = weights.sum()
+    weights.loc['mean'] = weights.mean()
     weights_options = weights.index
     multi_select_cluster = widgets.SelectMultiple(options=weights_options)
     plots_output = widgets.Output()
