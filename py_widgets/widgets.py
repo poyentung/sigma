@@ -50,7 +50,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
     y_id = y_id.ravel().reshape(-1,1)
     z_id = (PC.bse.data/PC.bse.data.max()).reshape(-1,1)
 
-    combined = np.concatenate([x_id, y_id, z_id, latent,dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
+    combined = np.concatenate([x_id, y_id, z_id, latent, dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
 
     sampled_combined = random.choices(combined, k=int(latent.shape[0]//(ratio_to_be_shown**-1)))
     sampled_combined = np.array(sampled_combined)
@@ -68,7 +68,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
             x='x:Q',
             y='y:Q', # use min extent to stabilize axis title placement
             color=alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
-            opacity=alt.condition(brush, alt.value(0.7), alt.value(0.25))
+            opacity=alt.condition(brush, alt.value(0.7), alt.value(0.25)),
+            tooltip=['Cluster_id:N', alt.Tooltip('x:Q', format=',.2f'), alt.Tooltip('y:Q', format=',.2f')]
         ).properties( 					
             width=450,
             height=450
@@ -96,8 +97,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     y=alt.Y('y_bse:O',axis=None),
                     color= alt.Color('z_bse:Q', scale=alt.Scale(scheme='greys', domain=[1.0,0.0]))
                     ).properties(
-                        width=250,
-                        height=250
+                        width=PC.width,
+                        height=PC.height
                     )
         heatmap = alt.Chart(source).mark_circle(size=3).encode(
                     x=alt.X('x_id:O',axis=None),
@@ -105,8 +106,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     color= alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
                     opacity=alt.condition(brush, alt.value(1), alt.value(0))
                     ).properties(
-                        width=250,
-                        height=250
+                        width=PC.width,
+                        height=PC.height
                     ).add_selection(brush)
         heatmap_bse = bse + heatmap
     
@@ -199,6 +200,8 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
 
 def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame, components:pd.DataFrame):
     # weights
+    weights.loc['Sum'] = weights.sum()
+    weights = weights.round(3)
     weights_options = weights.index
     multi_select_cluster = widgets.SelectMultiple(options=weights_options)
     plots_output = widgets.Output()
@@ -271,7 +274,7 @@ def show_clusters(PC:PhaseClassifier,binary_filter_args):
     display(dropdown_cluster)
     display(plots_output)
     
-def show_clusters(PC:PhaseClassifier,binary_filter_args):
+def show_clusters(PC:PhaseClassifier):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
     multi_select = widgets.SelectMultiple(options=cluster_options)
     plots_output = widgets.Output()
@@ -283,13 +286,12 @@ def show_clusters(PC:PhaseClassifier,binary_filter_args):
         
         with plots_output:
             for cluster in change.new:
-                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]), binary_filter_args=binary_filter_args)
+                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]))
                 
         with profile_output:
             ### X-ray profile ###
             for cluster in change.new:
-                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),
-                                                                 **binary_filter_args)
+                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),use_label=True)
                 plot_profile(edx_profile['energy'], edx_profile['intensity'], PC.peak_list)
         
     multi_select.observe(eventhandler, names='value')
