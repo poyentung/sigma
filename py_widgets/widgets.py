@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from utils.visualisation import plot_profile
-from models.clustering import PhaseClassifier
+from src.clustering import PhaseClassifier
 
 import numpy as np
 import pandas as pd
