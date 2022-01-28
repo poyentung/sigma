@@ -287,7 +287,10 @@ class PhaseClassifier(object):
 
         """
         
-        use_label=True if binary_filter_args == {} else: False
+        if binary_filter_args == {}:
+            use_label=True 
+        else: 
+            use_label=False
         binary_map, _, _ = self.get_binary_map_edx_profile(cluster_num, use_label=use_label, **binary_filter_args)
         pixel_to_um = self.edx.axes_manager[0].scale
         prop_list = ['area',
