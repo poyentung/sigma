@@ -6,7 +6,7 @@ import datetime
 import timeit
 from tqdm.notebook import tqdm_notebook as tqdm
 import numpy as np
-from . import utils
+from .utils import FeatureDataset
 
 import torch
 import torch.nn as nn
@@ -16,15 +16,6 @@ from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-def same_seeds(seed):
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    np.random.seed(seed)  # Numpy module.
-    random.seed(seed)  # Python random module.
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -156,10 +147,10 @@ class Experiment(object):
         
         #Data 
         if self.task == 'train_eval':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'train', self.noise)
-            self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
+            self.dataset_train = FeatureDataset(self.chosen_dataset,'train', self.noise)
+            self.dataset_test = FeatureDataset(self.chosen_dataset,'test')
         elif self.task == 'train_all':
-            self.dataset_train = utils.FeatureDataset(self.chosen_dataset,'all', self.noise)
+            self.dataset_train = FeatureDataset(self.chosen_dataset,'all', self.noise)
             # self.dataset_test = utils.FeatureDataset(self.chosen_dataset,'test')
         
         #Tracking losses and evaluation results
@@ -363,7 +354,7 @@ class Experiment(object):
         
     def get_latent(self) -> np:
         latents=list()
-        dataset_ = utils.FeatureDataset(self.chosen_dataset, 'all')
+        dataset_ = FeatureDataset(self.chosen_dataset, 'all')
         loader = DataLoader(dataset_,batch_size=4096,shuffle=False)
         
         with torch.no_grad():

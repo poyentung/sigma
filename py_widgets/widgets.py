@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
-sys.path.append('../')
-from load_dataset.exhaust import plot_profile
+from utils.visualisation import plot_profile
 from models.clustering import PhaseClassifier
 
 import numpy as np
@@ -34,13 +32,13 @@ def search_energy_peak():
     display(out)
 
 def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=False):
-    # create color codes
+    # create color codes 
     phase_colors = []
     for i in range(PC.n_components):
-          r,g,b = cm.get_cmap(PC.color_palette)(i*(PC.n_components-1)**-1)[:3]
-          r,g,b = int(r*255),int(g*255), int(b*255)
-          color = "#{:02x}{:02x}{:02x}".format(r,g,b)
-          phase_colors.append(color)
+        r,g,b = cm.get_cmap(PC.color_palette)(i*(PC.n_components-1)**-1)[:3]
+        r,g,b = int(r*255),int(g*255), int(b*255)
+        color = "#{:02x}{:02x}{:02x}".format(r,g,b)
+        phase_colors.append(color)
     domain = [i for i in range(PC.n_components)]
     range_ = phase_colors
     
@@ -85,7 +83,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
     columns=list()
     domain_barchart=(0,1) if PC.dataset.max()<1.0 else (-4,4)
     for item in feature_list:
-      columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=domain_barchart))
+        columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=domain_barchart))
                       ).properties(title=alt.TitleParams(text=item)))
     text = alt.hconcat(*columns) # Combine bars
 
@@ -253,28 +251,28 @@ def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame
     tab.set_title(3, 'Single component')
     display(tab)
 
-def show_clusters(PC:PhaseClassifier,binary_filter_args):
-    cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
-    dropdown_cluster = widgets.Dropdown(options=['ALL']+cluster_options)
-    plots_output = widgets.Output()
+# def show_clusters(PC:PhaseClassifier,binary_filter_args):
+#     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+#     dropdown_cluster = widgets.Dropdown(options=['ALL']+cluster_options)
+#     plots_output = widgets.Output()
     
-    with plots_output:
-        for i in range(PC.n_components):
-            PC.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
+#     with plots_output:
+#         for i in range(PC.n_components):
+#             PC.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
         
-    def dropdown_cluster_eventhandler(change):
-        plots_output.clear_output()
-        with plots_output:
-            if (change.new == ALL):
-                pass
-            else:
-                PC.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
+#     def dropdown_cluster_eventhandler(change):
+#         plots_output.clear_output()
+#         with plots_output:
+#             if (change.new == ALL):
+#                 pass
+#             else:
+#                 PC.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
         
-    dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
-    display(dropdown_cluster)
-    display(plots_output)
+#     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
+#     display(dropdown_cluster)
+#     display(plots_output)
     
-def show_clusters(PC:PhaseClassifier):
+def show_clusters(PC:PhaseClassifier, normalisation=True, spectra_range=(0,8)):
     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
     multi_select = widgets.SelectMultiple(options=cluster_options)
     plots_output = widgets.Output()
@@ -286,7 +284,7 @@ def show_clusters(PC:PhaseClassifier):
         
         with plots_output:
             for cluster in change.new:
-                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]))
+                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
                 
         with profile_output:
             ### X-ray profile ###
@@ -324,7 +322,7 @@ def save_csv(df):
     display(all_widgets)
     display(out)
     
-def show_cluster_stats(PC:PhaseClassifier,binary_filter_args):
+def show_cluster_stats(PC:PhaseClassifier,binary_filter_args={}):
     columns = ['area (um^2)','equivalent_diameter (um)', 
            'major_axis_length (um)','minor_axis_length (um)']
 
