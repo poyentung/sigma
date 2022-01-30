@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from utils.visualisation import plot_profile
+from utils import visualisation as visual 
 from src.segmentation import PixelSegmenter
 
 import numpy as np
@@ -100,7 +100,7 @@ def view_bcf_dataset(sem):
     tab.set_title(2, 'Elemental maps (raw)')
     if sem.edx_bin is not None:
         tab.set_title(3, 'Elemental maps (binned)')
-    display(tab)    
+    display(tab)
 
 def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
     # create color codes 
@@ -257,7 +257,7 @@ def show_unmixed_components(ps:PixelSegmenter, components:pd.DataFrame):
     def dropdown_cluster_eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
+            visual.plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
     
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
     
@@ -307,7 +307,7 @@ def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame,
     def dropdown_cluster_eventhandler(change):
         plots_output_cpnt.clear_output()
         with plots_output_cpnt:
-            plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
+            visual.plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
     
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
     
@@ -361,7 +361,7 @@ def show_clusters(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
             ### X-ray profile ###
             for cluster in change.new:
                 _,_, edx_profile = ps.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),use_label=True)
-                plot_profile(edx_profile['energy'], edx_profile['intensity'], ps.peak_list)
+                visual.plot_profile(edx_profile['energy'], edx_profile['intensity'], ps.peak_list)
         
     multi_select.observe(eventhandler, names='value')
     
