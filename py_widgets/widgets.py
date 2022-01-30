@@ -34,6 +34,7 @@ def search_energy_peak():
 def view_bcf_dataset(sem, search_energy=True):
     if search_energy == True:
         search_energy_peak()
+
     bse_out = widgets.Output()
     with bse_out:
         sem.bse.plot(colorbar=False)
@@ -51,7 +52,6 @@ def view_bcf_dataset(sem, search_energy=True):
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
             visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
-
         
     layout = widgets.Layout(width='600px', height='40px')
     text = widgets.Text(value='Al_Ka, C_Ka, Ca_Ka, Fe_Ka, K_Ka, O_Ka, Si_Ka, Ti_Ka, Zn_La',
@@ -59,8 +59,8 @@ def view_bcf_dataset(sem, search_energy=True):
                         description='Feature list:',
                         disabled=False,
                         continuous_update=True,
-                        display='flex',
-                        flex_flow='column',
+                        # display='flex',
+                        # flex_flow='column',
                         align_items='stretch', 
                         layout=layout
                     )
@@ -100,8 +100,9 @@ def view_bcf_dataset(sem, search_energy=True):
     tab.set_title(0, 'BSE image')
     tab.set_title(1, 'EDX sum spectrum')
     tab.set_title(2, 'Elemental maps (raw)')
+    i=2
     if sem.edx_bin is not None:
-        tab.set_title(3, 'Elemental maps (binned)')
+        tab.set_title(i+1, 'Elemental maps (binned)')
     display(tab)
 
 def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
