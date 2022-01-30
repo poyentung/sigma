@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from utils.visualisation import plot_profile
-from src.clustering import PhaseClassifier
+from src.segmentation import PixelSegmenter
 
 import numpy as np
 import pandas as pd
@@ -31,22 +31,22 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
-def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=False):
+def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
     # create color codes 
     phase_colors = []
-    for i in range(PC.n_components):
-        r,g,b = cm.get_cmap(PC.color_palette)(i*(PC.n_components-1)**-1)[:3]
+    for i in range(ps.n_components):
+        r,g,b = cm.get_cmap(ps.color_palette)(i*(ps.n_components-1)**-1)[:3]
         r,g,b = int(r*255),int(g*255), int(b*255)
         color = "#{:02x}{:02x}{:02x}".format(r,g,b)
         phase_colors.append(color)
-    domain = [i for i in range(PC.n_components)]
+    domain = [i for i in range(ps.n_components)]
     range_ = phase_colors
     
-    latent, dataset, feature_list, labels = PC.latent, PC.dataset, PC.sem.feature_list, PC.labels
-    x_id, y_id = np.meshgrid(range(PC.width), range(PC.height))
+    latent, dataset, feature_list, labels = ps.latent, ps.dataset, ps.sem.feature_list, ps.labels
+    x_id, y_id = np.meshgrid(range(ps.width), range(ps.height))
     x_id = x_id.ravel().reshape(-1,1)
     y_id = y_id.ravel().reshape(-1,1)
-    z_id = (PC.bse.data/PC.bse.data.max()).reshape(-1,1)
+    z_id = (ps.bse.data/ps.bse.data.max()).reshape(-1,1)
 
     combined = np.concatenate([x_id, y_id, z_id, latent, dataset.reshape(-1,dataset.shape[-1]).round(2), labels.reshape(-1,1)],axis=1)
 
@@ -81,7 +81,7 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
 
     # Data Bars
     columns=list()
-    domain_barchart=(0,1) if PC.dataset.max()<1.0 else (-4,4)
+    domain_barchart=(0,1) if ps.dataset.max()<1.0 else (-4,4)
     for item in feature_list:
         columns.append(ranked_text.encode(y=alt.Y(f'mean({item}):Q', scale=alt.Scale(domain=domain_barchart))
                       ).properties(title=alt.TitleParams(text=item)))
@@ -95,8 +95,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     y=alt.Y('y_bse:O',axis=None),
                     color= alt.Color('z_bse:Q', scale=alt.Scale(scheme='greys', domain=[1.0,0.0]))
                     ).properties(
-                        width=PC.width,
-                        height=PC.height
+                        width=ps.width,
+                        height=ps.height
                     )
         heatmap = alt.Chart(source).mark_circle(size=3).encode(
                     x=alt.X('x_id:O',axis=None),
@@ -104,8 +104,8 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
                     color= alt.Color('Cluster_id:N', scale=alt.Scale(domain=domain,range=range_)),
                     opacity=alt.condition(brush, alt.value(1), alt.value(0))
                     ).properties(
-                        width=PC.width,
-                        height=PC.height
+                        width=ps.width,
+                        height=ps.height
                     ).add_selection(brush)
         heatmap_bse = bse + heatmap
     
@@ -120,24 +120,24 @@ def check_latent_space(PC:PhaseClassifier, ratio_to_be_shown=0.25, show_map=Fals
     
     return chart
     
-def show_cluster_distribution(PC:PhaseClassifier):
-    cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+def show_cluster_distribution(ps:PixelSegmenter):
+    cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
     multi_select_cluster = widgets.SelectMultiple(options=['All']+cluster_options)
     plots_output = widgets.Output()
     
     with plots_output:
-        for i in range(PC.n_components):
-            PC.plot_single_cluster_distribution(cluster_num=i)
+        for i in range(ps.n_components):
+            ps.plot_single_cluster_distribution(cluster_num=i)
         
     def eventhandler(change):
         plots_output.clear_output()
         with plots_output:
             if change.new == ('All',):
-                for i in range(PC.n_components):
-                    PC.plot_single_cluster_distribution(cluster_num=i)
+                for i in range(ps.n_components):
+                    ps.plot_single_cluster_distribution(cluster_num=i)
             else:
                 for cluster in change.new:
-                    PC.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]))
+                    ps.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]))
                 
     multi_select_cluster.observe(eventhandler, names='value')
     display(multi_select_cluster)
@@ -175,18 +175,18 @@ def show_unmixed_weights(weights:pd.DataFrame):
     tab.set_title(1, 'Single weight')
     display(tab)
     
-def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
+def show_unmixed_components(ps:PixelSegmenter, components:pd.DataFrame):
     components_options = components.columns
     dropdown_cluster = widgets.Dropdown(options=components_options)
     plots_output = widgets.Output()
     all_output = widgets.Output()
     
     with all_output:
-        PC.plot_unmixed_profile(components)
+        ps.plot_unmixed_profile(components)
     def dropdown_cluster_eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
+            plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
     
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
     
@@ -196,7 +196,7 @@ def show_unmixed_components(PC:PhaseClassifier, components:pd.DataFrame):
     tab.set_title(1, 'Single cpnt')
     display(tab)
 
-def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame, components:pd.DataFrame):
+def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame, components:pd.DataFrame):
     # weights
     weights.loc['Sum'] = weights.sum()
     weights = weights.round(3)
@@ -232,11 +232,11 @@ def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame
     all_output_cpnt = widgets.Output()
     
     with all_output_cpnt:
-        PC.plot_unmixed_profile(components)
+        ps.plot_unmixed_profile(components)
     def dropdown_cluster_eventhandler(change):
         plots_output_cpnt.clear_output()
         with plots_output_cpnt:
-            plot_profile(PC.energy_axis, components[change.new], PC.peak_list)
+            plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
     
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
     
@@ -251,14 +251,14 @@ def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame
     tab.set_title(3, 'Single component')
     display(tab)
 
-# def show_clusters(PC:PhaseClassifier,binary_filter_args):
-#     cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+# def show_clusters(ps:PixelSegmenter,binary_filter_args):
+#     cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
 #     dropdown_cluster = widgets.Dropdown(options=['ALL']+cluster_options)
 #     plots_output = widgets.Output()
     
 #     with plots_output:
-#         for i in range(PC.n_components):
-#             PC.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
+#         for i in range(ps.n_components):
+#             ps.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
         
 #     def dropdown_cluster_eventhandler(change):
 #         plots_output.clear_output()
@@ -266,14 +266,14 @@ def show_unmixed_weights_and_compoments(PC:PhaseClassifier, weights:pd.DataFrame
 #             if (change.new == ALL):
 #                 pass
 #             else:
-#                 PC.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
+#                 ps.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
         
 #     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
 #     display(dropdown_cluster)
 #     display(plots_output)
     
-def show_clusters(PC:PhaseClassifier, normalisation=True, spectra_range=(0,8)):
-    cluster_options = [f'cluster_{n}' for n in range(PC.n_components)]
+def show_clusters(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
+    cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
     multi_select = widgets.SelectMultiple(options=cluster_options)
     plots_output = widgets.Output()
     profile_output = widgets.Output()
@@ -284,13 +284,13 @@ def show_clusters(PC:PhaseClassifier, normalisation=True, spectra_range=(0,8)):
         
         with plots_output:
             for cluster in change.new:
-                PC.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
+                ps.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
                 
         with profile_output:
             ### X-ray profile ###
             for cluster in change.new:
-                _,_, edx_profile = PC.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),use_label=True)
-                plot_profile(edx_profile['energy'], edx_profile['intensity'], PC.peak_list)
+                _,_, edx_profile = ps.get_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),use_label=True)
+                plot_profile(edx_profile['energy'], edx_profile['intensity'], ps.peak_list)
         
     multi_select.observe(eventhandler, names='value')
     
@@ -322,15 +322,15 @@ def save_csv(df):
     display(all_widgets)
     display(out)
     
-def show_cluster_stats(PC:PhaseClassifier,binary_filter_args={}):
+def show_cluster_stats(ps:PixelSegmenter,binary_filter_args={}):
     columns = ['area (um^2)','equivalent_diameter (um)', 
            'major_axis_length (um)','minor_axis_length (um)']
 
     for item in ('min_intensity','mean_intensity','max_intensity'):
-            columns += [f'{item}_{peak}' for peak in PC.peak_list]
+            columns += [f'{item}_{peak}' for peak in ps.peak_list]
 
     properties = widgets.Dropdown(options=columns,description='property:')
-    clusters = widgets.SelectMultiple(options=[f'cluster_{i}' for i in range(PC.n_components)],description='cluster:')
+    clusters = widgets.SelectMultiple(options=[f'cluster_{i}' for i in range(ps.n_components)],description='cluster:')
     bound_bins = widgets.BoundedIntText(value=40,min=5,max=100,step=1,description='num_bins:')
     output=widgets.Output()
 
@@ -339,8 +339,8 @@ def show_cluster_stats(PC:PhaseClassifier,binary_filter_args={}):
         with output:
             df_list = []
             for cluster in clusters:
-                df_stats = PC.phase_statics(cluster_num=int(cluster.split('_')[1]),
-                                            element_peaks=PC.peak_list,
+                df_stats = ps.phase_statics(cluster_num=int(cluster.split('_')[1]),
+                                            element_peaks=ps.peak_list,
                                             binary_filter_args=binary_filter_args)
                 df_list.append(df_stats[properties])
                 fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)

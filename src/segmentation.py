@@ -31,7 +31,7 @@ import plotly.express as px
 
 
 
-class PhaseClassifier(object):
+class PixelSegmenter(object):
     def __init__(self, 
                  latent:np, dataset_norm:np, sem:SEMDataset,
                  method='GaussianMixture', method_args={'n_components':8,
