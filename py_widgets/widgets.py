@@ -31,7 +31,9 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
-def view_bcf_dataset(sem):
+def view_bcf_dataset(semsearch_energy=True):
+    if search_energy == True:
+        search_energy_peak()
     bse_out = widgets.Output()
     with bse_out:
         sem.bse.plot(colorbar=False)
