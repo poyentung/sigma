@@ -31,6 +31,77 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
+def view_bcf_dataset(sem):
+    bse_out = widgets.Output()
+    with bse_out:
+        sem.bse.plot(colorbar=False)
+        plt.show()
+
+    sum_spec_out = widgets.Output()
+    with sum_spec_out:
+        visual.plot_sum_spectrum(sem.edx)
+
+    elemental_map_out = widgets.Output()
+    with elemental_map_out:
+        visual.plot_intensity_maps(sem.edx, sem.feature_list)
+
+    if sem.edx_bin is not None:
+        elemental_map_out_bin = widgets.Output()
+        with elemental_map_out_bin:
+            visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+
+        
+    layout = widgets.Layout(width='600px', height='40px')
+    text = widgets.Text(value='Al_Ka, C_Ka, Ca_Ka, Fe_Ka, K_Ka, O_Ka, Si_Ka, Ti_Ka, Zn_La',
+                        placeholder='Type something',
+                        description='Feature list:',
+                        disabled=False,
+                        continuous_update=True,
+                        display='flex',
+                        flex_flow='column',
+                        align_items='stretch', 
+                        layout=layout
+                    )
+
+    button = widgets.Button(description='Set')
+    out = widgets.Output()
+
+    def set_to(_):
+        out.clear_output()
+        with out:
+            feature_list = text.value.replace(" ", "").split(',')
+            sem.set_feature_list(feature_list)
+
+        sum_spec_out.clear_output()
+        with sum_spec_out:
+            visual.plot_sum_spectrum(sem.edx)
+        
+        elemental_map_out.clear_output()
+        with elemental_map_out:
+            visual.plot_intensity_maps(sem.edx, sem.feature_list)
+
+        if sem.edx_bin is not None:
+            elemental_map_out_bin.clear_output()
+            with elemental_map_out_bin:
+                visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+
+    button.on_click(set_to)
+    all_widgets = widgets.HBox([text, button])
+    display(all_widgets)
+    display(out)
+
+    tab_list = [bse_out, sum_spec_out, elemental_map_out]
+    if sem.edx_bin is not None:
+        tab_list += [elemental_map_out_bin]
+
+    tab = widgets.Tab(tab_list)
+    tab.set_title(0, 'BSE image')
+    tab.set_title(1, 'EDX sum spectrum')
+    tab.set_title(2, 'Elemental maps (raw)')
+    if sem.edx_bin is not None:
+        tab.set_title(3, 'Elemental maps (binned)')
+    display(tab)    
+
 def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
     # create color codes 
     phase_colors = []
