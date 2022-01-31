@@ -52,9 +52,16 @@ def view_bcf_dataset(sem, search_energy=True):
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
             visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
-        
+    
+    default_elements = ""
+    for i, element in enumerate(sem.feature_list):
+        if i == len(sem.feature_list)-1:
+            default_elements+=element
+        else:
+            default_elements+=element+','
+
     layout = widgets.Layout(width='600px', height='40px')
-    text = widgets.Text(value='Al_Ka, C_Ka, Ca_Ka, Fe_Ka, K_Ka, O_Ka, Si_Ka, Ti_Ka, Zn_La',
+    text = widgets.Text(value=default_elements,
                         placeholder='Type something',
                         description='Feature list:',
                         disabled=False,
