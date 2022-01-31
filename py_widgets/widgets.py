@@ -58,7 +58,7 @@ def view_bcf_dataset(sem, search_energy=True):
         if i == len(sem.feature_list)-1:
             default_elements+=element
         else:
-            default_elements+=element+','
+            default_elements+=element+', '
 
     layout = widgets.Layout(width='600px', height='40px')
     text = widgets.Text(value=default_elements,
