@@ -48,7 +48,7 @@ def plot_sum_spectrum(edx, xray_lines=True):
                                      title_x=0.5,
                                      xaxis_title="Energy / keV",
                                      yaxis_title="Counts",
-                                     width=600,
+                                     width=700,
                                      height=400))
     
     if xray_lines:
