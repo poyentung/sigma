@@ -187,9 +187,9 @@ def plot_pixel_distributions(sem:SEMDataset, norm_list=[], peak='Fe_Ka', cmap='v
     sns.set_style('ticks')
 
     normalised_elemental_data = sem.get_feature_maps()
-    num_norm_process = len(norm_list)
-    norm_dataset_labels = []
-    norm_datasets_list = []
+    num_norm_process = len(norm_list) + 1
+    norm_dataset_labels = ['raw_data']
+    norm_datasets_list = [normalised_elemental_data]
     
     for i, norm_process in enumerate(norm_list):
         normalised_elemental_data = norm_process(normalised_elemental_data)
