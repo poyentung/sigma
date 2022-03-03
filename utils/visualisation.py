@@ -182,38 +182,41 @@ def plot_intensity_np(dataset, element_list, cmap=None, save=None, **kwargs):
     plt.show()
   
 
-def plot_pixel_distributions(sem:SEMDataset, peak='Fe_Ka', **kwargs):
+def plot_pixel_distributions(sem:SEMDataset, norm_list=[], peak='Fe_Ka', cmap='viridis'):
     idx = sem.feature_dict[peak]
     sns.set_style('ticks')
-    dataset = sem.get_feature_maps()
-    dataset_avg = neighbour_averaging(dataset)
-    dataset_ins = zscore(dataset_avg) 
-    dataset_softmax = softmax(dataset_ins)
+
+    normalised_elemental_data = sem.get_feature_maps()
+    num_norm_process = len(norm_list)
+    norm_dataset_labels = []
+    norm_datasets_list = []
     
-    dataset_list= [dataset, dataset_avg, dataset_ins, dataset_softmax]
-    dataset_lable=['Original', 'Neighbour Intensity Averging', 'Z-score Normalisation', 'Softmax']
+    for i, norm_process in enumerate(norm_list):
+        normalised_elemental_data = norm_process(normalised_elemental_data)
+        norm_datasets_list.append(normalised_elemental_data)
+        norm_dataset_labels.append(norm_process.__name__)
     
     formatter = mpl.ticker.ScalarFormatter(useMathText=True)
     formatter.set_scientific(True) 
     formatter.set_powerlimits((-1,1)) 
 
-    fig, axs = plt.subplots(2,len(dataset_list), figsize=(4*len(dataset_list),6), dpi=100, gridspec_kw={'height_ratios': [2, 1.5]})
-    #fig.suptitle(f'Intensity Distribution of {feature_list[idx]}', y = .93)
+    fig, axs = plt.subplots(2,num_norm_process, figsize=(4*num_norm_process,6), dpi=100, 
+                            gridspec_kw={'height_ratios': [2, 1.5]})
     
-    for i in range(len(dataset_list)):
-        dataset = dataset_list[i]
-        im = axs[0,i].imshow(dataset[:,:,idx].round(2),cmap='viridis')
+    for i in range(num_norm_process):
+        dataset = norm_datasets_list[i]
+        im = axs[0,i].imshow(dataset[:,:,idx].round(2),cmap=cmap)
         axs[0,i].set_aspect('equal')
-        axs[0,i].set_title(f'{dataset_lable[i]}')
+        axs[0,i].set_title(f'{norm_dataset_labels[i]}')
         
         axs[0,i].axis('off')
         cbar = fig.colorbar(im,ax=axs[0,i], shrink=0.83, pad=0.025)
         cbar.outline.set_visible(False)
         cbar.ax.tick_params(labelsize=10, size=0)
     
-    for j in range(len(dataset_list)):
-        dataset = dataset_list[j]
-        sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], bins=50, **kwargs)
+    for j in range(num_norm_process):
+        dataset = norm_datasets_list[j]
+        sns.histplot(dataset[:,:,idx].ravel(),ax=axs[1,j], bins=50)
         
         axs[1,j].set_xlabel('Element Intensity')
         axs[1,j].yaxis.set_major_formatter(formatter)
