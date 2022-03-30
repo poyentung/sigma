@@ -74,12 +74,20 @@ def save_fig(fig):
         with out:
             if not os.path.isdir(folder_name.value):
                 os.mkdir(folder_name.value)
-            save_path = os.path.join(folder_name.value, file_name.value)
-            if isinstance(fig,mpl.figure.Figure):
+            if isinstance(fig, mpl.figure.Figure):
+                save_path = os.path.join(folder_name.value, file_name.value)
                 fig.savefig(save_path, dpi=dpi.value,bbox_inches = 'tight',pad_inches=pad.value)
-            # elif isinstance(fig,go.Figure):
-            #     fig.write_image(save_path)
-            print('save figure to', file_name.value)
+                print('save figure to', file_name.value)
+            else:
+                initial_file_name = file_name.value.split('.')
+                folder_for_fig = os.path.join(folder_name.value, initial_file_name[0])
+                if not os.path.isdir(folder_for_fig):
+                    os.mkdir(folder_for_fig)
+                for i, single_fig in enumerate(fig):
+                    save_path = os.path.join(folder_for_fig, f'{initial_file_name[0]}_{i:02}.{initial_file_name[1]}')
+                    single_fig.savefig(save_path, dpi=dpi.value,bbox_inches = 'tight',pad_inches=pad.value)
+                print('save all figure to folder:', folder_for_fig)
+            
 
     button.on_click(save_to)
     all_widgets = widgets.HBox([folder_name, file_name, dpi, pad, button], layout=Layout(width='auto'))
@@ -293,6 +301,7 @@ def view_latent_space(ps, color=True):
             for color_picker in color_pickers:
                 color_for_map.append(mpl.colors.to_rgb(color_picker.value)[:3])
             newcmp = mpl.colors.ListedColormap(color_for_map, name='new_cmap')
+            ps.set_color_palette(newcmp)
             fig = ps.plot_latent_space(color=color, cmap=newcmp)
             save_fig(fig)
 
@@ -406,24 +415,72 @@ def show_cluster_distribution(ps:PixelSegmenter):
     multi_select_cluster = widgets.SelectMultiple(options=['All']+cluster_options)
     plots_output = widgets.Output()
     
+    all_fig = []
     with plots_output:
         for i in range(ps.n_components):
-            ps.plot_single_cluster_distribution(cluster_num=i)
+            fig = ps.plot_single_cluster_distribution(cluster_num=i)
+            all_fig.append(fig)
         
     def eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            if change.new == ('All',):
+            if change.new == ('All'):
                 for i in range(ps.n_components):
-                    ps.plot_single_cluster_distribution(cluster_num=i)
+                    fig = ps.plot_single_cluster_distribution(cluster_num=i)
             else:
                 for cluster in change.new:
-                    ps.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]))
+                    fig = ps.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]))
                 
     multi_select_cluster.observe(eventhandler, names='value')
     display(multi_select_cluster)
+    save_fig(all_fig)
     display(plots_output)
-    
+
+
+def view_phase_map(ps):
+    colors = []
+    cmap = plt.get_cmap(ps.color_palette)
+    for i in range(ps.n_components):
+        colors.append(mpl.colors.to_hex(cmap(i*(ps.n_components-1)**-1)[:3]))
+
+    layout_format = Layout(width='18%',style={'description_width': 'initial'})
+    color_pickers = []
+    for i, c in enumerate(colors):
+        color_pickers.append(widgets.ColorPicker(value=c, 
+                                                description=f'cluster_{i}', 
+                                                layout=layout_format))
+
+    newcmp = mpl.colors.ListedColormap(colors, name='new_cmap')
+    out = widgets.Output()
+    with out:
+        fig = ps.plot_phase_map(cmap=None)
+        plt.show()
+        save_fig(fig)
+
+    def change_color(_):
+        out.clear_output()
+        with out:
+            color_for_map = []
+            for color_picker in color_pickers:
+                color_for_map.append(mpl.colors.to_rgb(color_picker.value)[:3])
+            newcmp = mpl.colors.ListedColormap(color_for_map, name='new_cmap')
+            ps.set_color_palette(newcmp)
+            fig = ps.plot_phase_map(cmap=newcmp)
+            save_fig(fig)
+
+    button = widgets.Button(description='Set', layout=Layout(width='auto'))
+    button.on_click(change_color)
+
+    color_list = []
+    for row in range((len(color_pickers)//5)+1):
+        color_list.append(widgets.HBox(color_pickers[5*row:(5*row+5)])
+                          )
+
+    color_box = widgets.VBox([widgets.VBox(color_list), button],
+                              layout=Layout(flex='2 1 0%', width='auto'))
+    out_box = widgets.Box([out],layout=Layout(flex='8 1 0%', width='auto'))
+    final_box = widgets.VBox([color_box, out_box])
+    display(final_box)
 
 def show_unmixed_weights(weights:pd.DataFrame):
     weights_options = weights.index
@@ -499,9 +556,10 @@ def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame,
                 fig, axs = plt.subplots(1,1,figsize=(4,3),dpi=96)
                 axs.bar(np.arange(0,num_cpnt), weights[weights.index == cluster].to_numpy().ravel(), width=0.6)
                 axs.set_xticks(np.arange(0,num_cpnt))
-                axs.set_ylabel('weight of component')
-                axs.set_xlabel('component number')
+                axs.set_ylabel('Abundance coefficient')
+                axs.set_xlabel('NMF component ID')
                 plt.show()
+                save_fig(fig)
     
     multi_select_cluster.observe(multi_select_cluster_eventhandler, names='value')
 
@@ -513,7 +571,8 @@ def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame,
     all_output_cpnt = widgets.Output()
     
     with all_output_cpnt:
-        ps.plot_unmixed_profile(components)
+        fig = ps.plot_unmixed_profile(components)
+        save_fig(fig)
     def dropdown_cluster_eventhandler(change):
         plots_output_cpnt.clear_output()
         with plots_output_cpnt:
@@ -553,19 +612,25 @@ def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame,
 #     display(dropdown_cluster)
 #     display(plots_output)
     
-def show_clusters(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
+def view_clusters_sum_spectra(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
     cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
     multi_select = widgets.SelectMultiple(options=cluster_options)
     plots_output = widgets.Output()
     profile_output = widgets.Output()
-        
+    
+    figs = []
+    with plots_output:
+        for cluster in cluster_options:
+            fig = ps.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
+            figs.append(fig)
+
     def eventhandler(change):
         plots_output.clear_output()
         profile_output.clear_output()
         
         with plots_output:
             for cluster in change.new:
-                ps.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
+                fig = ps.plot_binary_map_edx_profile(cluster_num=int(cluster.split('_')[1]),normalisation=normalisation, spectra_range=spectra_range)
                 
         with profile_output:
             ### X-ray profile ###
@@ -576,6 +641,7 @@ def show_clusters(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
     multi_select.observe(eventhandler, names='value')
     
     display(multi_select)
+    save_fig(figs)
     tab = widgets.Tab([plots_output, profile_output])
     tab.set_title(0, 'clusters + edx')
     tab.set_title(1, 'edx')
@@ -617,8 +683,9 @@ def show_cluster_stats(ps:PixelSegmenter,binary_filter_args={}):
 
     def plot_output(clusters, properties, bound_bins):
         output.clear_output()
+        df_list = []
+        fig_list = []
         with output:
-            df_list = []
             for cluster in clusters:
                 df_stats = ps.phase_statics(cluster_num=int(cluster.split('_')[1]),
                                             element_peaks=ps.peak_list,
@@ -629,9 +696,13 @@ def show_cluster_stats(ps:PixelSegmenter,binary_filter_args={}):
                 sns.histplot(df_stats[properties],bins=bound_bins)
                 plt.title(cluster)
                 plt.show()
+                fig_list.append(fig)
             df_list = pd.concat(df_list, axis=1, keys=clusters)
-            save_csv(df_list)
             
+        save_csv(df_list)
+        fig_list = fig_list[0] if len(fig_list)==1 else fig_list
+        save_fig(fig_list)
+        
             
 
     def cluster_handler(change):
