@@ -337,29 +337,33 @@ class PixelSegmenter(object):
 # Visualization #--------------------------------------------------------------
 #################
     
-    def plot_latent_space(self, color=True, save=None, **kwargs):
-        fig, axs = plt.subplots(1,1,figsize=(3,3),dpi=150, **kwargs)
+    def plot_latent_space(self, color=True, cmap=None):
+        cmap = self.color_palette if cmap is None else cmap
+        
+        fig, axs = plt.subplots(1,1,figsize=(3,3),dpi=150)
         label = self.model.predict(self.latent)
         
-        c = self.color_palette if color else 'k'
-        axs.scatter(self.latent[:, 0], self.latent[:, 1], 
-                    c=label, s=1., zorder=2, alpha=.15,
-                    linewidths=0, cmap=self.color_palette,
-                    norm=self.color_norm)
+        if color: 
+            axs.scatter(self.latent[:, 0], self.latent[:, 1], 
+                        c=label, s=1., zorder=2, alpha=.15,
+                        linewidths=0, cmap=cmap,
+                        norm=self.color_norm)
+            
+            if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
+                i=0
+                for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
+                    self.draw_ellipse(pos, covar, alpha= 0.14, facecolor=plt.cm.get_cmap(cmap)(i*(self.n_components-1)**-1), edgecolor='None', zorder=-10)
+                    self.draw_ellipse(pos, covar, alpha= 0.0, edgecolor=plt.cm.get_cmap(cmap)(i*(self.n_components-1)**-1), facecolor='None', zorder=-9, lw=0.25)
+                    i+=1
+        else:
+            axs.scatter(self.latent[:, 0], self.latent[:, 1], 
+                        c='k', s=1., zorder=2, alpha=.15,
+                        linewidths=0)
         
         for axis in ['top','bottom','left','right']:
             axs.spines[axis].set_linewidth(1.5)
-        
-        # axs.axis('equal')
-        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
-            i=0
-            for pos, covar, w in zip(self.model.means_, self.model.covariances_, self.model.weights_):
-                self.draw_ellipse(pos, covar, alpha= 0.14, facecolor=plt.cm.get_cmap(self.color_palette)(i*(self.n_components-1)**-1), edgecolor='None', zorder=-10)
-                self.draw_ellipse(pos, covar, alpha= 0.0, edgecolor=plt.cm.get_cmap(self.color_palette)(i*(self.n_components-1)**-1), facecolor='None', zorder=-9, lw=0.25)
-                i+=1
-                
-        if save is not None:
-            fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
+        plt.show()     
+        return fig
             
     def plot_latent_density(self, bins=50):
         z = np.histogram2d(x=self.latent[:,0], y=self.latent[:,1],bins=bins)[0]
