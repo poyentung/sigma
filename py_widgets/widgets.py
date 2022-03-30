@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from seaborn.palettes import color_palette
 from utils import visualisation as visual 
 from src.segmentation import PixelSegmenter
 
+import os
 import numpy as np
 import pandas as pd
 import random
 import hyperspy.api as hs
 import seaborn as sns
 import altair as alt
+import plotly.graph_objects as go
 import ipywidgets as widgets
+from ipywidgets import Layout
 from IPython.display import display
 from matplotlib import cm
 from  matplotlib import pyplot as plt
+import matplotlib as mpl
 
 def search_energy_peak():
     text = widgets.BoundedFloatText(value=1.4898,step=0.1,description='Energy (keV):', continuous_update=True)
@@ -31,6 +36,128 @@ def search_energy_peak():
     display(widget_set)
     display(out)
 
+def save_fig(fig):
+    file_name = widgets.Text(value='figure_name.tif',
+                    placeholder='Type something',
+                    description='Save as:',
+                    disabled=False,
+                    continuous_update=True,
+                    layout=Layout(width='auto')
+                   )
+    folder_name = widgets.Text(value='results',
+                    placeholder='Type something',
+                    description='Folder name:',
+                    disabled=False,
+                    continuous_update=True,
+                    layout=Layout(width='auto')
+                   )
+    dpi = widgets.BoundedIntText(value='96',
+                                        min=0,
+                                        max=300,
+                                        step=1,
+                                        description='Set dpi:',
+                                        disabled=False,
+                                        continuous_update=True,
+                                        layout=Layout(width='auto')
+                                    )
+    pad = widgets.BoundedFloatText(value='0.01',
+                                        min=0.0,
+                                        description='Set pad:',
+                                        disabled=False,
+                                        continuous_update=True,
+                                        layout=Layout(width='auto')
+                                    )
+    button = widgets.Button(description='Save')
+    out = widgets.Output()
+    def save_to(_):
+        out.clear_output()
+        with out:
+            if not os.path.isdir(folder_name.value):
+                os.mkdir(folder_name.value)
+            save_path = os.path.join(folder_name.value, file_name.value)
+            if isinstance(fig,mpl.figure.Figure):
+                fig.savefig(save_path, dpi=dpi.value,bbox_inches = 'tight',pad_inches=pad.value)
+            # elif isinstance(fig,go.Figure):
+            #     fig.write_image(save_path)
+            print('save figure to', file_name.value)
+
+    button.on_click(save_to)
+    all_widgets = widgets.HBox([folder_name, file_name, dpi, pad, button], layout=Layout(width='auto'))
+    display(all_widgets)
+    display(out)
+
+def pick_color(plot_func, *args, **kwargs):
+    # Create initial color codes
+    hsv = plt.get_cmap('hsv')
+    colors = []
+    for i in range(len(kwargs['element_list'])):
+        colors.append(mpl.colors.to_hex(hsv(i/len(kwargs['element_list']))[:3]))
+
+    layout_format = Layout(width='18%',style={'description_width': 'initial'})
+    color_pickers = []
+    for element, color in zip(kwargs['element_list'], colors):
+        color_pickers.append(widgets.ColorPicker(value=color, 
+                                                description=element, 
+                                                layout=layout_format))
+    # Create an ouput object
+    out = widgets.Output()
+    with out:
+        fig = visual.plot_intensity_maps(**kwargs)
+        save_fig(fig)
+
+    def change_color(_):
+        out.clear_output()
+        with out:
+            color_for_map = []
+            for color_picker in color_pickers:
+                if not isinstance(color_picker, widgets.Button):
+                    color_for_map.append(mpl.colors.to_rgb(color_picker.value)[:3])
+            fig = visual.plot_intensity_maps(**kwargs, colors=color_for_map)
+            save_fig(fig)
+
+    button = widgets.Button(description='Set', layout=Layout(width='auto'))
+    button.on_click(change_color)
+
+    # Set cmap = viridis for all maps
+    text_color = widgets.Text(value='viridis',
+                                placeholder='Type something',
+                                description='Color map:',
+                                disabled=False,
+                                continuous_update=True,
+                                layout=Layout(width='auto'))
+    def set_single_cmap(_):
+        out.clear_output()
+        with out:
+            fig = visual.plot_intensity_maps(**kwargs, colors=text_color.value)
+            save_fig(fig)
+    button2 = widgets.Button(description='Set color map', 
+                             layout=Layout(width='auto'))
+    button2.on_click(set_single_cmap)
+
+    # Reset button
+    def reset(_):
+        out.clear_output()
+        with out:
+            fig = visual.plot_intensity_maps(**kwargs, colors=[])
+            save_fig(fig)
+    button3 = widgets.Button(description='Reset', 
+                             layout=Layout(width='auto')) 
+    button3.on_click(reset)   
+
+    num_col = len(color_pickers)//2
+    colorpicker_col = widgets.VBox([widgets.HBox(color_pickers[:num_col+1]),
+                                    widgets.HBox(color_pickers[num_col+1:]),
+                                    button],
+                                    layout=Layout(flex='8 1 0%', width='80%'))
+    button_col = widgets.VBox([text_color, button2,button3],
+                              layout=Layout(flex='2 1 0%', width='20%'))
+    color_box = widgets.HBox([colorpicker_col, button_col])
+
+    out_box = widgets.Box([out])
+
+    final_box = widgets.VBox([color_box,out_box])
+    display(final_box)
+
 def view_bcf_dataset(sem, search_energy=True):
     if search_energy == True:
         search_energy_peak()
@@ -39,20 +166,29 @@ def view_bcf_dataset(sem, search_energy=True):
     with bse_out:
         sem.bse.plot(colorbar=False)
         plt.show()
-
+        fig, axs = plt.subplots(1,1)
+        axs.imshow(sem.bse.data, cmap='gray')
+        axs.axis('off')
+        save_fig(fig)
+        plt.close()
+        
     sum_spec_out = widgets.Output()
     with sum_spec_out:
         visual.plot_sum_spectrum(sem.edx)
-
+    
     elemental_map_out = widgets.Output()
     with elemental_map_out:
-        visual.plot_intensity_maps(sem.edx, sem.feature_list)
+        pick_color(visual.plot_intensity_maps, edx=sem.edx, element_list=sem.feature_list)
+        # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+        # save_fig(fig)
 
     if sem.edx_bin is not None:
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
-            visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
-    
+            pick_color(visual.plot_intensity_maps, edx=sem.edx_bin, element_list=sem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+            # save_fig(fig)
+
     default_elements = ""
     for i, element in enumerate(sem.feature_list):
         if i == len(sem.feature_list)-1:
@@ -111,6 +247,70 @@ def view_bcf_dataset(sem, search_energy=True):
     if sem.edx_bin is not None:
         tab.set_title(i+1, 'Elemental maps (binned)')
     display(tab)
+
+
+
+def view_pixel_distributions(sem, norm_list=[], peak='Fe_Ka', cmap='viridis'):
+    out = widgets.Output()
+    with out:
+        fig = visual.plot_pixel_distributions(sem=sem, norm_list=norm_list, peak=peak, cmap=cmap)
+        plt.show()
+    
+    out_box = widgets.Box([out])
+    display(out_box)
+    save_fig(fig)
+    
+
+
+def view_intensity_maps(edx, element_list):
+    pick_color(visual.plot_intensity_maps, edx=edx, element_list=element_list)
+
+
+def view_latent_space(ps, color=True):
+    colors = []
+    cmap = plt.get_cmap(ps.color_palette)
+    for i in range(ps.n_components):
+        colors.append(mpl.colors.to_hex(cmap(i*(ps.n_components-1)**-1)[:3]))
+
+    layout_format = Layout(width='18%',style={'description_width': 'initial'})
+    color_pickers = []
+    for i, c in enumerate(colors):
+        color_pickers.append(widgets.ColorPicker(value=c, 
+                                                description=f'cluster_{i}', 
+                                                layout=layout_format))
+
+    newcmp = mpl.colors.ListedColormap(colors, name='new_cmap')
+    out = widgets.Output()
+    with out:
+        fig = ps.plot_latent_space(color=color, cmap=None)
+        plt.show()
+        save_fig(fig)
+
+    def change_color(_):
+        out.clear_output()
+        with out:
+            color_for_map = []
+            for color_picker in color_pickers:
+                color_for_map.append(mpl.colors.to_rgb(color_picker.value)[:3])
+            newcmp = mpl.colors.ListedColormap(color_for_map, name='new_cmap')
+            fig = ps.plot_latent_space(color=color, cmap=newcmp)
+            save_fig(fig)
+
+    button = widgets.Button(description='Set', layout=Layout(width='auto'))
+    button.on_click(change_color)
+   
+
+    color_list = []
+    for row in range((len(color_pickers)//5)+1):
+        color_list.append(widgets.HBox(color_pickers[5*row:(5*row+5)])
+                          )
+
+    color_box = widgets.VBox([widgets.VBox(color_list), button],
+                              layout=Layout(flex='2 1 0%', width='auto'))
+    out_box = widgets.Box([out],layout=Layout(flex='8 1 0%', width='auto'))
+    final_box = widgets.VBox([color_box, out_box])
+    display(final_box)
+
 
 def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
     # create color codes 
