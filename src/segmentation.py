@@ -108,7 +108,8 @@ class PixelSegmenter(object):
             self.color_palette = 'nipy_spectral'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.n_components-1)
             
-        
+    def set_color_palette(self, cmap):
+        self.color_palette = cmap
     def set_feature_list(self, new_list):
         self.peak_list = new_list
         self.sem.set_feature_list(new_list)
@@ -558,21 +559,20 @@ class PixelSegmenter(object):
         fig.subplots_adjust(wspace=0.05, hspace=0.2)
         fig.set_tight_layout(True)
         plt.show()
-    
-    
-    
-    def plot_phase_map(self, not_to_show=[],save=None, **kwargs):
-        
+        return fig
+
+    def plot_phase_map(self, cmap=None):
+        cmap = self.color_palette if cmap is None else cmap
         img = self.bse.data
         phase = self.model.predict(self.latent).reshape(self.height, self.width)
     
-        fig, axs = plt.subplots(nrows=1,ncols=2,sharey=True,figsize=(8,4), dpi=100, **kwargs)
+        fig, axs = plt.subplots(nrows=1,ncols=2,sharey=True,figsize=(8,4), dpi=100)
         
-        for i in not_to_show:
-            phase[np.where(phase==i)]=0
+        # for i in not_to_show:
+        #     phase[np.where(phase==i)]=0
             
         axs[0].imshow(img,cmap='gray',interpolation='none')
-        axs[0].set_title('SE')
+        axs[0].set_title('BSE')
         axs[0].axis('off') 
     
         axs[1].imshow(img,cmap='gray',interpolation='none',alpha=1.)
@@ -588,13 +588,10 @@ class PixelSegmenter(object):
     
         fig.subplots_adjust(wspace=0.05, hspace=0.)
         plt.show()
-        
-        if save is not None:
-            fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
+        return fig
     
     
-    
-    def plot_binary_map_edx_profile(self, cluster_num, normalisation=True, spectra_range=(0,8), save=None, **kwargs):
+    def plot_binary_map_edx_profile(self, cluster_num, normalisation=True, spectra_range=(0,8), **kwargs):
 
         binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(cluster_num, use_label=False)
 
@@ -618,7 +615,7 @@ class PixelSegmenter(object):
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
-        axs[1].set_title('SE + Binary Map',fontsize=10)
+        axs[1].set_title('BSE + Binary Map',fontsize=10)
         
         if normalisation:
             intensity = edx_profile['intensity'].to_numpy() / edx_profile['intensity'].max()
@@ -662,11 +659,8 @@ class PixelSegmenter(object):
         
         # fig.subplots_adjust(left=0.1)
         plt.tight_layout()
-        
-        if save is not None:
-            fig.savefig(save, bbox_inches = 'tight', pad_inches=0.02)
-            
         plt.show()
+        return fig
     
     def plot_binary_map(self, cluster_num, 
                         binary_filter_args={'threshold':0.8, 
@@ -739,6 +733,7 @@ class PixelSegmenter(object):
         fig.subplots_adjust(hspace=0.3, wspace=0.)
         plt.tight_layout()
         plt.show()
+        return fig
     
     
     def plot_edx_profile(self, cluster_num, peak_list, binary_filter_args):
