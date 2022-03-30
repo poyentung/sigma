@@ -75,7 +75,7 @@ def plot_sum_spectrum(edx, xray_lines=True):
     fig.update_layout(template='simple_white')
     fig.show()
 
-def plot_intensity_maps(edx, element_list, cmap=None,save=None):
+def plot_intensity_maps(edx, element_list, colors=[],save=None):
     feature_dict = {el:i for (i,el) in enumerate(element_list)}
     num_peak = len(element_list)
     if num_peak > 4:
@@ -87,10 +87,19 @@ def plot_intensity_maps(edx, element_list, cmap=None,save=None):
     
     c = mcolors.ColorConverter().to_rgb
     # color = sns.color_palette("Spectral", as_cmap=True)
-    color = plt.get_cmap('hsv')
-    cmaps = []
-    for i in range(num_peak):
-        cmaps.append(make_colormap([c('k'), color(i/num_peak)[:3], 1, color(i/num_peak)[:3]]))
+    hsv = plt.get_cmap('hsv')
+    
+    # Create cmap for individual maps
+    cmaps=[]
+    if type(colors)==str:
+        pass
+    elif not colors:
+        for i in range(num_peak):
+            cmaps.append(make_colormap([c('k'), hsv(i/num_peak)[:3], 1, hsv(i/num_peak)[:3]]))
+    else:
+        assert(len(colors)==num_peak)
+        for color in colors:
+            cmaps.append(make_colormap([c('k'), color, 1, color]))
         
     fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True, 
                             figsize=(4*n_cols,3.*n_rows))
@@ -112,8 +121,9 @@ def plot_intensity_maps(edx, element_list, cmap=None,save=None):
                     el_map = edx.get_lines_intensity([el])[0].data
                 else:
                     el_map = edx[:,:,feature_dict[el]]
-                if cmap is not None:
-                    c = cmap
+                
+                if type(colors)==str:
+                    c = colors
                 else:
                     c=cmaps[(i*n_cols)+j]
                 im = sns.heatmap(el_map, cmap=c,square=True, ax=axs_sub)
@@ -129,6 +139,7 @@ def plot_intensity_maps(edx, element_list, cmap=None,save=None):
         fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
         
     plt.show()
+    return fig
     
 def plot_intensity_np(dataset, element_list, cmap=None, save=None, **kwargs):   
     num_peak = len(element_list)
@@ -224,6 +235,7 @@ def plot_pixel_distributions(sem:SEMDataset, norm_list=[], peak='Fe_Ka', cmap='v
             axs[1,j].set_ylabel(' ')
     
     fig.subplots_adjust(wspace=0.2, hspace=0.1)
+    return fig
     
 
 def plot_profile(energy, intensity, peak_list):
