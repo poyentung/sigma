@@ -256,6 +256,58 @@ def view_bcf_dataset(sem, search_energy=True):
         tab.set_title(i+1, 'Elemental maps (binned)')
     display(tab)
 
+def view_rgb(sem):
+    option_dict = {}
+    if isinstance(sem.normalised_elemental_data, np.ndarray):
+        option_dict['normalised'] = sem.normalised_elemental_data
+    
+    option_dict['binned'] = sem.edx_bin.data
+    option_dict['raw'] = sem.edx.data
+    
+    dropdown_option = widgets.Dropdown(options=list(option_dict.keys()),description='Data:')
+    dropdown_r = widgets.Dropdown(options=sem.feature_list,description='Red:')
+    dropdown_g = widgets.Dropdown(options=sem.feature_list,description='Green:')
+    dropdown_b = widgets.Dropdown(options=sem.feature_list,description='Blue:')
+
+    plots_output = widgets.Output()
+    def dropdown_option_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = visual.plot_rgb(sem, 
+                            elemental_maps=option_dict[change.new], 
+                            elements=[dropdown_r.value, dropdown_g.value, dropdown_b.value])
+            save_fig(fig)
+    def dropdown_r_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = visual.plot_rgb(sem, 
+                            elemental_maps=option_dict[dropdown_option.value], 
+                            elements=[change.new, dropdown_g.value, dropdown_b.value])
+            save_fig(fig)
+    def dropdown_g_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = visual.plot_rgb(sem, 
+                            elemental_maps=option_dict[dropdown_option.value], 
+                            elements=[dropdown_r.value, change.new, dropdown_b.value])
+            save_fig(fig)
+    def dropdown_b_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = visual.plot_rgb(sem, 
+                            elemental_maps=option_dict[dropdown_option.value], 
+                            elements=[dropdown_r.value, dropdown_g.value, change.new])
+            save_fig(fig)
+    
+    dropdown_option.observe(dropdown_option_eventhandler, names='value')
+    dropdown_r.observe(dropdown_r_eventhandler, names='value')
+    dropdown_g.observe(dropdown_g_eventhandler, names='value')
+    dropdown_b.observe(dropdown_b_eventhandler, names='value')
+    color_box = widgets.VBox([dropdown_r, dropdown_g, dropdown_b])
+    box = widgets.HBox([dropdown_option, color_box])
+
+    display(box)
+    display(plots_output) 
 
 
 def view_pixel_distributions(sem, norm_list=[], peak='Fe_Ka', cmap='viridis'):
@@ -273,6 +325,22 @@ def view_pixel_distributions(sem, norm_list=[], peak='Fe_Ka', cmap='viridis'):
 def view_intensity_maps(edx, element_list):
     pick_color(visual.plot_intensity_maps, edx=edx, element_list=element_list)
 
+
+
+def view_bic(latent, n_components=20, model='BayesianGaussianMixture', model_args={'random_state':6}):
+    bic_list = PixelSegmenter.bic(latent, n_components, model, model_args)
+    fig = go.Figure(data=go.Scatter(x=np.arange(1,n_components+1, dtype=int), y=bic_list),
+                    layout=go.Layout(title="",
+                                    title_x=0.5,
+                                    xaxis_title="Number of component",
+                                    yaxis_title="BIC",
+                                    width=900,
+                                    height=500))
+
+    fig.update_layout(showlegend=False)
+    fig.update_layout(template='simple_white')
+    fig.update_traces(marker_size=15)
+    fig.show()
 
 def view_latent_space(ps, color=True):
     colors = []
