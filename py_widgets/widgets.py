@@ -378,11 +378,11 @@ def view_latent_space(ps, color=True):
                             layout=Layout(flex='8 1 0%',width='auto'))
     button.on_click(change_color)
     
-     # Reset button
+    # Reset button
     def reset(_):
         out.clear_output()
         with out:
-            fig = ps.plot_latent_space(color=color, cmap=None)
+            fig = ps.plot_latent_space(color=color, cmap=ps._color_palette)
             save_fig(fig)
     button2 = widgets.Button(description='Reset', 
                              layout=Layout(flex='2 1 0%',width='auto')) 
