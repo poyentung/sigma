@@ -193,6 +193,25 @@ def plot_intensity_np(dataset, element_list, cmap=None, save=None, **kwargs):
     plt.show()
   
 
+def plot_rgb(sem, elemental_maps, elements=[]):
+    assert len(elements) < 4
+    if not elements:
+        elements = sem.feature_list[:3]
+    if not isinstance(elemental_maps, np.ndarray):
+        elemental_maps = elemental_maps.data
+    shape = elemental_maps.shape[:2]
+    img = np.zeros((shape[0],shape[1], 3))
+
+    for i, element in enumerate(elements):
+        idx = sem.feature_dict[element]
+        img[:,:,i] = elemental_maps[:,:,idx]
+
+    fig, axs = plt.subplots(1,1, dpi=96)
+    axs.imshow(img)
+    axs.axis('off')
+    plt.show()
+    return fig
+
 def plot_pixel_distributions(sem:SEMDataset, norm_list=[], peak='Fe_Ka', cmap='viridis'):
     idx = sem.feature_dict[peak]
     sns.set_style('ticks')
