@@ -334,13 +334,14 @@ def view_bic(latent, n_components=20, model='BayesianGaussianMixture', model_arg
                                     title_x=0.5,
                                     xaxis_title="Number of component",
                                     yaxis_title="BIC",
-                                    width=900,
-                                    height=500))
+                                    width=800,
+                                    height=600))
 
     fig.update_layout(showlegend=False)
     fig.update_layout(template='simple_white')
     fig.update_traces(marker_size=15)
     fig.show()
+    save_csv(pd.DataFrame(data={'bic':bic_list}))
 
 def view_latent_space(ps, color=True):
     colors = []
@@ -717,7 +718,7 @@ def view_clusters_sum_spectra(ps:PixelSegmenter, normalisation=True, spectra_ran
     
 
 def save_csv(df):
-    text = widgets.Text(value='stat_info.csv',
+    text = widgets.Text(value='file_name.csv',
                     placeholder='Type something',
                     description='Save as:',
                     disabled=False,
