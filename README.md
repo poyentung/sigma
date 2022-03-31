@@ -3,7 +3,7 @@
 Unmix is an open-source Python library for phase identification and spectrum analysis for energy dispersive x-ray spectroscopy (EDS) datasets. 
 The library mainly builds on the Hyperspy, Pytorch, and Scikit-learn. Use the link below to test your dataset:
 
-<a href="https://colab.research.google.com/github/poyentung/unmix/blob/final/tutorial/tutorial.ipynb">
+<a href="https://colab.research.google.com/github/poyentung/unmix/blob/final/tutorial/full_tutorial.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
