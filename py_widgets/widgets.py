@@ -152,11 +152,12 @@ def pick_color(plot_func, *args, **kwargs):
                              layout=Layout(width='auto')) 
     button3.on_click(reset)   
 
-    num_col = len(color_pickers)//2
-    colorpicker_col = widgets.VBox([widgets.HBox(color_pickers[:num_col+1]),
-                                    widgets.HBox(color_pickers[num_col+1:]),
-                                    button],
-                                    layout=Layout(flex='8 1 0%', width='80%'))
+    color_list = []
+    for row in range((len(color_pickers)//5)+1):
+        color_list.append(widgets.HBox(color_pickers[5*row:(5*row+5)]))
+    
+    color_list.append(button)
+    colorpicker_col = widgets.VBox(color_list,layout=Layout(flex='8 1 0%', width='80%'))
     button_col = widgets.VBox([text_color, button2,button3],
                               layout=Layout(flex='2 1 0%', width='20%'))
     color_box = widgets.HBox([colorpicker_col, button_col])
@@ -378,7 +379,7 @@ def view_latent_space(ps, color=True):
                             layout=Layout(flex='8 1 0%',width='auto'))
     button.on_click(change_color)
     
-    # Reset button
+     # Reset button
     def reset(_):
         out.clear_output()
         with out:
