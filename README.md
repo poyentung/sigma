@@ -6,6 +6,7 @@ The library mainly builds on the Hyperspy, Pytorch, and Scikit-learn. Use the li
 <a href="https://colab.research.google.com/github/poyentung/unmix/blob/final/tutorial/full_tutorial.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
+<a href="https://zenodo.org/badge/latestdoi/415443021"><img src="https://zenodo.org/badge/415443021.svg" alt="DOI"></a>
 
 
 ## Check EDS dataset with GUI
