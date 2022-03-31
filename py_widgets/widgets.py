@@ -374,16 +374,28 @@ def view_latent_space(ps, color=True):
             fig = ps.plot_latent_space(color=color, cmap=newcmp)
             save_fig(fig)
 
-    button = widgets.Button(description='Set', layout=Layout(width='auto'))
+    button = widgets.Button(description='Set', 
+                            layout=Layout(flex='8 1 0%',width='auto'))
     button.on_click(change_color)
-   
+    
+     # Reset button
+    def reset(_):
+        out.clear_output()
+        with out:
+            fig = ps.plot_latent_space(color=color, cmap=None)
+            save_fig(fig)
+    button2 = widgets.Button(description='Reset', 
+                             layout=Layout(flex='2 1 0%',width='auto')) 
+    button2.on_click(reset)   
+    
 
     color_list = []
     for row in range((len(color_pickers)//5)+1):
         color_list.append(widgets.HBox(color_pickers[5*row:(5*row+5)])
                           )
 
-    color_box = widgets.VBox([widgets.VBox(color_list), button],
+    button_box = widgets.HBox([button, button2])
+    color_box = widgets.VBox([widgets.VBox(color_list), button_box],
                               layout=Layout(flex='2 1 0%', width='auto'))
     out_box = widgets.Box([out],layout=Layout(flex='8 1 0%', width='auto'))
     final_box = widgets.VBox([color_box, out_box])
