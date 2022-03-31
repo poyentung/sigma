@@ -114,6 +114,32 @@ class PixelSegmenter(object):
         self.peak_list = new_list
         self.sem.set_feature_list(new_list)
 
+    @staticmethod
+    def bic(latent, n_components=20, model='BayesianGaussianMixture', model_args={'random_state':6}):
+        def _n_parameters(model):
+            """Return the number of free parameters in the model."""
+            _, n_features = model.means_.shape
+            if model.covariance_type == "full":
+                cov_params = model.n_components * n_features * (n_features + 1) / 2.0
+            elif model.covariance_type == "diag":
+                cov_params = model.n_components * n_features
+            elif model.covariance_type == "tied":
+                cov_params = n_features * (n_features + 1) / 2.0
+            elif model.covariance_type == "spherical":
+                cov_params = model.n_components
+            mean_params = n_features * model.n_components
+            return int(cov_params + mean_params + model.n_components - 1)
+
+        bic_list = []
+        for i in range(n_components):
+            if model == 'BayesianGaussianMixture':
+                GMM = BayesianGaussianMixture(n_components=i+1, **model_args).fit(latent)
+            elif model == 'GaussianMixture':
+                GMM = GaussianMixture(n_components=i+1, **model_args).fit(latent)
+            bic = -2 * GMM.score(latent) * latent.shape[0] + _n_parameters(GMM) * np.log(latent.shape[0])
+            bic_list.append(bic)
+        return bic_list
+
 #################
 # Data Analysis #--------------------------------------------------------------
 #################
