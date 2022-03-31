@@ -329,7 +329,7 @@ def view_intensity_maps(edx, element_list):
 
 def view_bic(latent, n_components=20, model='BayesianGaussianMixture', model_args={'random_state':6}):
     bic_list = PixelSegmenter.bic(latent, n_components, model, model_args)
-    fig = go.Figure(data=go.Scatter(x=np.arange(1,n_components+1, dtype=int), y=bic_list),
+    fig = go.Figure(data=go.Scatter(x=np.arange(1,n_components+1, dtype=int), y=bic_list, mode='lines+markers'),
                     layout=go.Layout(title="",
                                     title_x=0.5,
                                     xaxis_title="Number of component",
@@ -339,7 +339,7 @@ def view_bic(latent, n_components=20, model='BayesianGaussianMixture', model_arg
 
     fig.update_layout(showlegend=False)
     fig.update_layout(template='simple_white')
-    fig.update_traces(marker_size=15)
+    fig.update_traces(marker_size=12)
     fig.show()
     save_csv(pd.DataFrame(data={'bic':bic_list}))
 
