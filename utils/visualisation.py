@@ -207,7 +207,7 @@ def plot_rgb(sem, elemental_maps, elements=[]):
         img[:,:,i] = elemental_maps[:,:,idx]
 
     fig, axs = plt.subplots(1,1, dpi=96)
-    axs.imshow(img)
+    axs.imshow(img, alpha=0.95)
     axs.axis('off')
     plt.show()
     return fig
