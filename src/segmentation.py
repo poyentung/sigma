@@ -102,9 +102,11 @@ class PixelSegmenter(object):
         
         # Set color for phase visualisation
         if self.n_components <= 10:
+            self._color_palette = 'tab10'
             self.color_palette = 'tab10'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=9)
         else:
+            self._color_palette = 'nipy_spectral'
             self.color_palette = 'nipy_spectral'
             self.color_norm = mpl.colors.Normalize(vmin=0, vmax=self.n_components-1)
             
