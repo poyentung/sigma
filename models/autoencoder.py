@@ -1,13 +1,5 @@
-# -*- coding: utf-8 -*-
-
 import torch.nn as nn
 import torch
-
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
     
 class AutoEncoder(nn.Module):
     def __init__(self, in_channel:int, 
@@ -35,8 +27,6 @@ class AutoEncoder(nn.Module):
 
         self.encoder = nn.Sequential(*encoder)
         self.decoder = nn.Sequential(*decoder)
-
-        self.apply(weights_init)
     
     def _encode(self, x):
         return self.encoder(x)
