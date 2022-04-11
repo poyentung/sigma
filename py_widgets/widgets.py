@@ -1,24 +1,21 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-from seaborn.palettes import color_palette
-from utils import visualisation as visual 
-from src.segmentation import PixelSegmenter
-
 import os
+import random
 import numpy as np
 import pandas as pd
-import random
-import hyperspy.api as hs
+import hyperspy.api as hyperspy
+from  matplotlib import pyplot as plt
+import matplotlib as mpl
+from matplotlib import cm
 import seaborn as sns
+from seaborn.palettes import color_palette
 import altair as alt
 import plotly.graph_objects as go
 import ipywidgets as widgets
 from ipywidgets import Layout
 from IPython.display import display
-from matplotlib import cm
-from  matplotlib import pyplot as plt
-import matplotlib as mpl
+from utils import visualisation as visual 
+from src.segmentation import PixelSegmenter
+
 
 def search_energy_peak():
     text = widgets.BoundedFloatText(value=1.4898,step=0.1,description='Energy (keV):', continuous_update=True)
