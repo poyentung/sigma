@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 __version__ = '0.1.0'
     
 setup(
-    name='sigma',
+    name='sigmapy',
     version=__version__,
     description="spectral interpretation using gaussian mixtures and autoencoder ",
     author='Po-Yen Tung',
