@@ -2,17 +2,20 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 __version__ = '0.1.0'
     
 setup(
-    name='sigmapy',
+    name='sigma-em',
     version=__version__,
     description="spectral interpretation using gaussian mixtures and autoencoder ",
     author='Po-Yen Tung',
     author_email='pyt21@cam.ac.uk',
     license='GNU GPLv3',
     url="https://github.com/poyentung/sigma",
-    long_description=open("README.md").read(),
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     keywords=[
         "hyperspectral imaging analysis",
         "energy dispersive x-ray spectroscopy",
