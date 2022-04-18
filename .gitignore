@@ -58,3 +58,6 @@ var/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Autoencoder models #
+Model*

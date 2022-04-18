@@ -394,20 +394,6 @@ class PixelSegmenter(object):
             axs.spines[axis].set_linewidth(1.5)
         plt.show()     
         return fig
-            
-    def plot_latent_density(self, bins=50):
-        z = np.histogram2d(x=self.latent[:,0], y=self.latent[:,1],bins=bins)[0]
-        sh_0, sh_1 = z.shape
-        x, y = np.linspace(self.latent[:,0].min(), self.latent[:,0].max(), sh_0), np.linspace(self.latent[:,1].min(), self.latent[:,1].max(), sh_1)
-        fig = go.Figure(data=[go.Surface(z=z.T, 
-                                         x=x,
-                                         y=y,
-                                         colorscale ='RdBu_r')])
-        fig.update_layout(title='Density of pixels in latent space', autosize=True,
-                          width=500, height=500,
-                          margin=dict(l=65, r=50, b=65, t=90))
-        fig.show()
-    
     
     def draw_ellipse(self, position, covariance, ax=None, **kwargs):
         """Draw an ellipse with a given position and covariance"""

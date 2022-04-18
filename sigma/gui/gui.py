@@ -401,10 +401,10 @@ def view_latent_space(ps:PixelSegmenter, color=True):
     display(final_box)
 
 
-def view_latent_density(ps:PixelSegmenter, bins=50):
+def plot_latent_density(ps:PixelSegmenter, bins=50):
     z = np.histogram2d(x=ps.latent[:,0], y=ps.latent[:,1],bins=bins)[0]
     sh_0, sh_1 = z.shape
-    x, y = np.linspace(ps.latent[:,0].min(), ps.latent[:,0].max(), sh_0), np.linspace(self.latent[:,1].min(), self.latent[:,1].max(), sh_1)
+    x, y = np.linspace(ps.latent[:,0].min(), ps.latent[:,0].max(), sh_0), np.linspace(ps.latent[:,1].min(), ps.latent[:,1].max(), sh_1)
     fig = go.Figure(data=[go.Surface(z=z.T, 
                                      x=x,
                                      y=y,
