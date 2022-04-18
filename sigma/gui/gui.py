@@ -1,8 +1,11 @@
+from sigma.utils import visualisation as visual 
+from sigma.src.segmentation import PixelSegmenter
+
 import os
 import random
 import numpy as np
 import pandas as pd
-import hyperspy.api as hyperspy
+import hyperspy.api as hs
 from  matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
@@ -13,8 +16,6 @@ import plotly.graph_objects as go
 import ipywidgets as widgets
 from ipywidgets import Layout
 from IPython.display import display
-from utils import visualisation as visual 
-from src.segmentation import PixelSegmenter
 
 
 def search_energy_peak():
@@ -341,7 +342,7 @@ def view_bic(latent, n_components=20, model='BayesianGaussianMixture', model_arg
     fig.show()
     save_csv(pd.DataFrame(data={'bic':bic_list}))
 
-def view_latent_space(ps, color=True):
+def view_latent_space(ps:PixelSegmenter, color=True):
     colors = []
     cmap = plt.get_cmap(ps.color_palette)
     for i in range(ps.n_components):
@@ -399,6 +400,20 @@ def view_latent_space(ps, color=True):
     final_box = widgets.VBox([color_box, out_box])
     display(final_box)
 
+
+def view_latent_density(ps:PixelSegmenter, bins=50):
+    z = np.histogram2d(x=ps.latent[:,0], y=ps.latent[:,1],bins=bins)[0]
+    sh_0, sh_1 = z.shape
+    x, y = np.linspace(ps.latent[:,0].min(), ps.latent[:,0].max(), sh_0), np.linspace(self.latent[:,1].min(), self.latent[:,1].max(), sh_1)
+    fig = go.Figure(data=[go.Surface(z=z.T, 
+                                     x=x,
+                                     y=y,
+                                     colorscale ='RdBu_r')])
+    fig.update_layout(title='Density of pixels in latent space', autosize=True,
+                      width=500, height=500,
+                      margin=dict(l=65, r=50, b=65, t=90))
+    fig.show()
+    
 
 def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False):
     # create color codes 

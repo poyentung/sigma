@@ -1,0 +1,13 @@
+torch>=1.10.0+cu111
+hyperspy>=1.6.5
+ipywidgets
+lmfit>=0.9.12
+matplotlib>=3.2.2
+numba
+numpy>=1.19.5
+scikit-learn>=1.0.2
+scipy
+tqdm>=4.62.3
+seaborn>=0.11.2
+plotly>=4.4.1
+altair>=4.2.0

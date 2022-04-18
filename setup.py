@@ -4,10 +4,10 @@
 from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
-__version__ = '0.1.0'
+__version__ = "0.1.7"
     
 setup(
-    name='sigma-em',
+    name='emsigma',
     version=__version__,
     description="spectral interpretation using gaussian mixtures and autoencoder ",
     author='Po-Yen Tung',
@@ -56,5 +56,4 @@ setup(
         "": ["LICENSE", "README.md"],
         "sigma": ["*.py"],
     },
-    entry_points={"hyperspy.extensions": ["pyxem = pyxem"]},
 )
