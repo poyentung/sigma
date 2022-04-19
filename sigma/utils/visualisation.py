@@ -7,9 +7,11 @@ import matplotlib as mpl
 import matplotlib.colors as mcolors
 import seaborn as sns
 import plotly.graph_objects as go
-
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
 from matplotlib import pyplot as plt
+
+from plotly.offline import init_notebook_mode
+init_notebook_mode(connected=True)
 
 peak_dict = dict()
 for element in hs.material.elements:

@@ -17,6 +17,9 @@ import ipywidgets as widgets
 from ipywidgets import Layout
 from IPython.display import display
 
+# to make sure the plot function works
+from plotly.offline import init_notebook_mode
+init_notebook_mode(connected=True)
 
 def search_energy_peak():
     text = widgets.BoundedFloatText(value=1.4898,step=0.1,description='Energy (keV):', continuous_update=True)
