@@ -5,7 +5,7 @@
 
 ### Try SIGMA with Colab:
 
-<a href="https://github.com/poyentung/sigma/blob/master/tutorial/tutorial_colab.ipynb">
+<a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/tutorial_colab.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 <a href="https://zenodo.org/badge/latestdoi/415443021"><img src="https://zenodo.org/badge/415443021.svg" alt="DOI"></a>
