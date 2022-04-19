@@ -2,9 +2,11 @@
 import hyperspy.api as hs
 import numpy as np
 import itertools
-
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
 from hyperspy._signals.signal2d import Signal2D
+
+hs.preferences.GUIs.warn_if_guis_are_missing = False
+hs.preferences.save()
 
 
 class SEMDataset(object):

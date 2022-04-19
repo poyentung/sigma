@@ -459,42 +459,9 @@ class PixelSegmenter(object):
         
         if save is not None:
             fig.savefig(save, bbox_inches = 'tight', pad_inches=0.01)
-    
-    def plot_single_cluster_distribution(self, cluster_num, kwargs={}):
-        fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 3),dpi=96, **kwargs)
-        fig.subplots_adjust(hspace=0.35, wspace=0.1)
         
-        formatter = mpl.ticker.ScalarFormatter(useMathText=True)
-        formatter.set_scientific(True) 
-        formatter.set_powerlimits((-1,1))
-        
-        
-        if self.method in ['GaussianMixture', 'BayesianGaussianMixture']:
-            prob_map_i = self.prob_map[:,cluster_num]
-        else:
-            prob_map_i = np.where(self.labels==cluster_num,1,0)
-        im=axs[0].imshow(prob_map_i.reshape(self.height, self.width), cmap='viridis')
-        axs[0].set_title('Probability of each pixel for cluster '+str(cluster_num))
-
-        axs[0].axis('off')
-        cbar = fig.colorbar(im,ax=axs[0], shrink=0.9, pad=0.025)
-        cbar.outline.set_visible(False)
-        cbar.ax.tick_params(labelsize=10, size=0)
-
-        if self.n_components <= 10:
-            axs[1].bar(self.sem.feature_list, self.mu[cluster_num], width=0.6, 
-                         color = plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
-        else:
-            axs[1].bar(self.sem.feature_list, self.mu[cluster_num], width=0.6, 
-                         color = plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
-
-        axs[1].set_title('Mean value for cluster '+str(cluster_num))
-    
-        fig.subplots_adjust(wspace=0.05, hspace=0.2)
-        plt.show()
-        
-    def plot_single_cluster_distribution(self, cluster_num, spectra_range=(0,8), kwargs={}):
-        fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(13, 2.5),dpi=120, **kwargs)
+    def plot_single_cluster_distribution(self, cluster_num, spectra_range=(0,8)):
+        fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(13, 2.5),dpi=120)
         fig.subplots_adjust(hspace=0.35, wspace=0.1)
         
         formatter = mpl.ticker.ScalarFormatter(useMathText=True)
@@ -530,19 +497,22 @@ class PixelSegmenter(object):
         edx_profile = self.get_binary_map_edx_profile(cluster_num)[2]
         intensity = edx_profile['intensity'].to_numpy() / edx_profile['intensity'].max()
         
+        axs[2].plot(edx_profile['energy'], 
+                    intensity_sum, 
+                    alpha= 1,
+                    linewidth=0.7,
+                    linestyle='dotted',
+                    color= sns.color_palette()[0],
+                    label='Normalised sum spectrum')
         
         if self.n_components <= 10:
-            axs[2].plot(edx_profile['energy'], intensity, 
-                    linewidth=1,color=plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
+            axs[2].plot(edx_profile['energy'], 
+                        intensity, 
+                        linewidth=1,
+                        color=plt.cm.get_cmap(self.color_palette)(cluster_num*0.1))
         else:
             axs[2].plot(edx_profile['energy'], 
-                        intensity_sum, 
-                        alpha= 1,
-                        linewidth=0.7,
-                        linestyle='dotted',
-                        color= sns.color_palette()[0],
-                        label='Normalised sum spectrum')
-            axs[2].plot(edx_profile['energy'], intensity, 
+                        intensity, 
                         linewidth=1,
                         color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
         
@@ -562,7 +532,10 @@ class PixelSegmenter(object):
         axs[2].legend(loc='upper right', handletextpad=0.5, frameon=False,prop=legend_properties)
 
         
-        zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        if np.array(edx_profile['energy']).min()<=0:
+            zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        else:
+            zero_energy_idx = 0
         for el in self.sem.feature_list:
             peak_sum = intensity_sum[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
             peak_single = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
@@ -626,7 +599,8 @@ class PixelSegmenter(object):
         axs[0].axis('off')
         axs[0].set_aspect('equal', 'box')
     
-        axs[1].imshow(self.sem.bse_bin.data, cmap='gray',interpolation='none', alpha=1)
+        bse = self.sem.bse_bin.data if self.sem.bse_bin else self.sem.bse.data
+        axs[1].imshow(bse, cmap='gray',interpolation='none', alpha=1)
         axs[1].scatter(binary_map_indices[1], binary_map_indices[0], c='r', alpha=0.05, s=1.2)
         axs[1].grid(False)
         axs[1].axis('off')
@@ -647,7 +621,10 @@ class PixelSegmenter(object):
                         linewidth=1,
                         color= plt.cm.get_cmap(self.color_palette)(cluster_num*(self.n_components-1)**-1))
         
-        zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        if np.array(edx_profile['energy']).min() <= 0.0:
+            zero_energy_idx = np.where(np.array(edx_profile['energy']).round(2)==0)[0][0]
+        else:
+            zero_energy_idx = 0
         for el in self.peak_list:
             peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]
             axs[2].vlines(self.peak_dict[el], 0, int(0.9*peak), linewidth=0.7, color = 'grey', linestyles='dashed')
@@ -737,8 +714,11 @@ class PixelSegmenter(object):
                     axs_sub.set_ylabel('Intensity')
                     axs_sub.set_xlabel('Energy (keV)')
                     axs_sub.set_title(f'cpnt_{cur_cpnt}')
-
-                    zero_energy_idx = np.where(np.array(self.energy_axis).round(2)==0)[0][0]
+                    
+                    if np.array(self.energy_axis).min() <=0.0:
+                        zero_energy_idx = np.where(np.array(self.energy_axis).round(2)==0)[0][0]
+                    else:
+                        zero_energy_idx = 0
                     intensity = components[cpnt].to_numpy()
                     for el in peak_list:
                         peak = intensity[zero_energy_idx:][int(self.peak_dict[el]*100)+1]

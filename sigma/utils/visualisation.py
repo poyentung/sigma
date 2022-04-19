@@ -8,6 +8,7 @@ import matplotlib.colors as mcolors
 import seaborn as sns
 import plotly.graph_objects as go
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
+from hyperspy.signals import EDSTEMSpectrum
 from matplotlib import pyplot as plt
 
 from plotly.offline import init_notebook_mode
@@ -55,7 +56,10 @@ def plot_sum_spectrum(edx, xray_lines=True):
     
     if xray_lines:
         feature_list = edx.metadata.Sample.xray_lines
-        zero_energy_idx = np.where(np.array(energy_axis).round(2)==0)[0][0]
+        if np.array(energy_axis).min()<=0:
+            zero_energy_idx = np.where(np.array(energy_axis).round(2)==0)[0][0]
+        else:
+            zero_energy_idx = 0
         for el in feature_list:
             peak = edx.sum().data[zero_energy_idx:][int(peak_dict[el]*100)+1]
             fig.add_shape(type="line",
@@ -119,7 +123,7 @@ def plot_intensity_maps(edx, element_list, colors=[],save=None):
                     axs_sub = axs[j]
                     
                 el = element_list[cur_peak]
-                if type(edx) is EDSSEMSpectrum:
+                if (type(edx) is EDSSEMSpectrum) or (type(edx) is EDSTEMSpectrum):
                     el_map = edx.get_lines_intensity([el])[0].data
                 else:
                     el_map = edx[:,:,feature_dict[el]]

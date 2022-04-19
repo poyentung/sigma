@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
-__version__ = "0.1.10"
+__version__ = "0.1.25"
     
 setup(
     name='emsigma',
@@ -36,7 +36,7 @@ setup(
     ],
     packages=find_packages(),
     install_requires=[
-        "notebook"
+        "notebook",
         "torch          >= 1.10.0+cu111",
         "hyperspy       >= 1.6.5",  
         "ipywidgets",

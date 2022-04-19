@@ -507,7 +507,7 @@ def check_latent_space(ps:PixelSegmenter, ratio_to_be_shown=0.25, show_map=False
     
     return chart
     
-def show_cluster_distribution(ps:PixelSegmenter):
+def show_cluster_distribution(ps:PixelSegmenter, **kwargs):
     cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
     multi_select_cluster = widgets.SelectMultiple(options=['All']+cluster_options)
     plots_output = widgets.Output()
@@ -515,18 +515,18 @@ def show_cluster_distribution(ps:PixelSegmenter):
     all_fig = []
     with plots_output:
         for i in range(ps.n_components):
-            fig = ps.plot_single_cluster_distribution(cluster_num=i)
+            fig = ps.plot_single_cluster_distribution(cluster_num=i,**kwargs)
             all_fig.append(fig)
         
     def eventhandler(change):
         plots_output.clear_output()
         with plots_output:
-            if change.new == ('All'):
+            if change.new == ('All',):
                 for i in range(ps.n_components):
-                    fig = ps.plot_single_cluster_distribution(cluster_num=i)
+                    fig = ps.plot_single_cluster_distribution(cluster_num=i, **kwargs)
             else:
                 for cluster in change.new:
-                    fig = ps.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]))
+                    fig = ps.plot_single_cluster_distribution(cluster_num=int(cluster.split('_')[1]), **kwargs)
                 
     multi_select_cluster.observe(eventhandler, names='value')
     display(multi_select_cluster)
@@ -687,27 +687,6 @@ def show_unmixed_weights_and_compoments(ps:PixelSegmenter, weights:pd.DataFrame,
     tab.set_title(2, 'All components')
     tab.set_title(3, 'Single component')
     display(tab)
-
-# def show_clusters(ps:PixelSegmenter,binary_filter_args):
-#     cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
-#     dropdown_cluster = widgets.Dropdown(options=['ALL']+cluster_options)
-#     plots_output = widgets.Output()
-    
-#     with plots_output:
-#         for i in range(ps.n_components):
-#             ps.plot_binary_map(cluster_num=i, binary_filter_args=binary_filter_args)
-        
-#     def dropdown_cluster_eventhandler(change):
-#         plots_output.clear_output()
-#         with plots_output:
-#             if (change.new == ALL):
-#                 pass
-#             else:
-#                 ps.plot_binary_map(cluster_num=int(change.new.split('_')[1]), binary_filter_args=binary_filter_args)
-        
-#     dropdown_cluster.observe(dropdown_cluster_eventhandler, names='value')
-#     display(dropdown_cluster)
-#     display(plots_output)
     
 def view_clusters_sum_spectra(ps:PixelSegmenter, normalisation=True, spectra_range=(0,8)):
     cluster_options = [f'cluster_{n}' for n in range(ps.n_components)]
@@ -818,3 +797,96 @@ def show_cluster_stats(ps:PixelSegmenter,binary_filter_args={}):
     all_widgets = widgets.HBox([clusters,properties,bound_bins])
     display(all_widgets)
     display(output) 
+
+def view_emi_dataset(tem, search_energy=True):
+    if search_energy == True:
+        search_energy_peak()
+
+    bse_out = widgets.Output()
+    with bse_out:
+        tem.bse.plot(colorbar=False)
+        plt.show()
+        fig, axs = plt.subplots(1,1)
+        axs.imshow(tem.bse.data, cmap='gray')
+        axs.axis('off')
+        save_fig(fig)
+        plt.close()
+        
+    sum_spec_out = widgets.Output()
+    with sum_spec_out:
+        visual.plot_sum_spectrum(tem.edx)
+    
+    elemental_map_out = widgets.Output()
+    with elemental_map_out:
+        if len(tem.feature_list) != 0:
+            pick_color(visual.plot_intensity_maps, edx=tem.edx, element_list=tem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+            # save_fig(fig)
+
+    if tem.edx_bin is not None:
+        elemental_map_out_bin = widgets.Output()
+        with elemental_map_out_bin:
+            pick_color(visual.plot_intensity_maps, edx=tem.edx_bin, element_list=tem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+            # save_fig(fig)
+
+    default_elements = ""
+    for i, element in enumerate(tem.feature_list):
+        if i == len(tem.feature_list)-1:
+            default_elements+=element
+        else:
+            default_elements+=element+', '
+
+    layout = widgets.Layout(width='600px', height='40px')
+    text = widgets.Text(value=default_elements,
+                        placeholder='Type something',
+                        description='Feature list:',
+                        disabled=False,
+                        continuous_update=True,
+                        # display='flex',
+                        # flex_flow='column',
+                        align_items='stretch', 
+                        layout=layout
+                    )
+
+    button = widgets.Button(description='Set')
+    out = widgets.Output()
+
+    def set_to(_):
+        out.clear_output()
+        with out:
+            feature_list = text.value.replace(" ", "").split(',')
+            tem.set_feature_list(feature_list)
+
+        sum_spec_out.clear_output()
+        with sum_spec_out:
+            visual.plot_sum_spectrum(tem.edx)
+        
+        if len(tem.feature_list) != 0:
+            elemental_map_out.clear_output()
+            with elemental_map_out:
+                pick_color(visual.plot_intensity_maps, edx=tem.edx, element_list=tem.feature_list)
+                visual.plot_intensity_maps(tem.edx, tem.feature_list)
+
+        if tem.edx_bin is not None:
+            elemental_map_out_bin.clear_output()
+            with elemental_map_out_bin:
+                visual.plot_intensity_maps(tem.edx_bin, tem.feature_list)
+
+    button.on_click(set_to)
+    all_widgets = widgets.HBox([text, button])
+    display(all_widgets)
+    display(out)
+
+    tab_list = [bse_out, sum_spec_out, elemental_map_out]
+    if tem.edx_bin is not None:
+        tab_list += [elemental_map_out_bin]
+
+    tab = widgets.Tab(tab_list)
+    tab.set_title(0, 'EDX sum intensity map')
+    tab.set_title(1, 'EDX sum spectrum')
+    tab.set_title(2, 'Elemental maps (raw)')
+    i=2
+    if tem.edx_bin is not None:
+        tab.set_title(i+1, 'Elemental maps (binned)')
+    display(tab)
