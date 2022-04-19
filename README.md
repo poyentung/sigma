@@ -10,6 +10,7 @@
 </a>
 <a href="https://zenodo.org/badge/latestdoi/415443021"><img src="https://zenodo.org/badge/415443021.svg" alt="DOI"></a>
 
+
 ## Installation
 1. Create a [**Python>=3.7.0**](https://www.python.org/) environment with [**conda**](https://docs.conda.io/en/latest/):
 ```bash
