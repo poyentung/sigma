@@ -23,19 +23,21 @@ conda activate sigma
 pip install emsigma
 ```
 
+3. Use the notebook in the tutorial folder to run **SIGMA**.
+
 ## Workflow of SIGMA
 1. A neural network autoencoder is trained to learn good representations of elemental pixels in the 2D latent space. <br />
-<div align="middle">
+<div align="left">
   <img width="650" alt="Autoencoder" src="https://user-images.githubusercontent.com/29102746/163899500-34ac68e2-9a38-44d9-a869-e40c024c420b.png">
 </div><br />
 
 2. The trained encoder is then used to transform high-dimensional elemental pixels into low-dimensional representations, followed by clustering using Gaussian mixture modeling (GMM) in the informative latent space.<br />
-<div align="middle">
+<div align="left">
   <img width="650" alt="GMM" src="https://user-images.githubusercontent.com/29102746/163899758-6bd61544-fa91-44ac-8647-d249982b6607.png"> 
 </div><br />
 
 3. Non-negative matrix factorization (NMF) is applied to unmix the single-phase spectra for all clusters.<br />
-<div align="middle">
+<div align="left">
   <img width="650" alt="NMF" src="https://user-images.githubusercontent.com/29102746/163899763-0fb4f835-3380-4504-9f3a-bb33089421f8.png">  
 </div><br />
 
