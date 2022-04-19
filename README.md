@@ -18,7 +18,7 @@ conda create -n sigma python=3.7 anaconda
 conda activate sigma
 ```
 
-2. Install SIGMA with [**pip**](https://pypi.org/project/pip/):
+2. Install **SIGMA** with [**pip**](https://pypi.org/project/pip/):
 ```bash
 pip install emsigma
 ```
