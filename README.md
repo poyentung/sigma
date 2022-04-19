@@ -41,7 +41,7 @@ pip install emsigma
 
 In such a way, the algorithm not only identifies the locations of all unknown phases but also isolates the background-subtracted EDS spectra of individual phases.
 
-## Demonstration of GUI
+## User-friendly GUI
 ### Check .bcf file
 An example of checking the EDS dataset and the sum spectrum.
 <details open>
