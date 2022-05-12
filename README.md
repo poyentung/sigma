@@ -2,6 +2,7 @@
 
 **Spectral Interpretation using Gaussian Mixtures and Autoencoder (SIGMA)** is an open-source Python library for phase identification and spectrum analysis for energy dispersive x-ray spectroscopy (EDS) datasets. The library mainly builds on the [**Hyperspy**](https://hyperspy.org/), [**Pytorch**](https://pytorch.org/), and [**Scikit-learn**](https://scikit-learn.org/stable/). <br />
 
+Note: the current version can only read `.bcf` and `.emi` files.
 
 ### Test your dataset on SIGMA with Colab:
 
