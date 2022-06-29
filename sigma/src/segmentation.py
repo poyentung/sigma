@@ -628,8 +628,13 @@ class PixelSegmenter(object):
 
         sum_spectrum = self.sem.edx_bin if self.sem.edx_bin else self.sem.edx
         intensity_sum = sum_spectrum.sum().data / sum_spectrum.sum().data.max()
-
-        edx_profile = self.get_binary_map_edx_profile(cluster_num)[2]
+        
+        try:
+            edx_profile = self.get_binary_map_edx_profile(cluster_num)[2]
+        except ValueError:
+            print(f'warning: no pixel is assigned to cpnt_{cluster_num}')
+            return
+        
         intensity = edx_profile["intensity"].to_numpy() / edx_profile["intensity"].max()
 
         axs[2].plot(

@@ -634,20 +634,20 @@ def show_cluster_distribution(ps: PixelSegmenter, **kwargs):
     all_fig = []
     with plots_output:
         for i in range(ps.n_components):
-            fig = ps.plot_single_cluster_distribution(cluster_num=i, **kwargs)
-            all_fig.append(fig)
+                fig = ps.plot_single_cluster_distribution(cluster_num=i, **kwargs)
+                all_fig.append(fig)
 
     def eventhandler(change):
         plots_output.clear_output()
         with plots_output:
             if change.new == ("All",):
                 for i in range(ps.n_components):
-                    fig = ps.plot_single_cluster_distribution(cluster_num=i, **kwargs)
+                        fig = ps.plot_single_cluster_distribution(cluster_num=i, **kwargs)
             else:
                 for cluster in change.new:
-                    fig = ps.plot_single_cluster_distribution(
-                        cluster_num=int(cluster.split("_")[1]), **kwargs
-                    )
+                        fig = ps.plot_single_cluster_distribution(
+                            cluster_num=int(cluster.split("_")[1]), **kwargs
+                        )
 
     multi_select_cluster.observe(eventhandler, names="value")
     display(multi_select_cluster)
@@ -1077,8 +1077,12 @@ def show_abundance_map(ps:PixelSegmenter, weights:pd.DataFrame, components: pd.D
                 cpnt_weights = weights[phase]/weights[phase].max()
                 tmp = np.zeros(shape)
                 for j in range(ps.n_components):
-                    idx = ps.get_binary_map_edx_profile(j)[1]
-                    tmp[idx] = cpnt_weights[j]
+                    try:
+                        idx = ps.get_binary_map_edx_profile(j)[1]
+                        tmp[idx] = cpnt_weights[j]
+                    except ValueError:
+                        pass
+                        # print(f'warning: no pixel is assigned to cpnt_{j}.')
                 img[:, :, i] = tmp
             else:
                 img[:, :, i] = np.zeros(shape)
