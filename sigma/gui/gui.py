@@ -5,6 +5,7 @@ import os
 import random
 import numpy as np
 import pandas as pd
+from typing import List
 import hyperspy.api as hs
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -765,10 +766,10 @@ def show_unmixed_weights_and_compoments(
     ps: PixelSegmenter, weights: pd.DataFrame, components: pd.DataFrame
 ):
     # weights
-    weights.loc["Sum"] = weights.sum()
-    weights = weights.round(3)
-    weights_options = weights.index
-    multi_select_cluster = widgets.SelectMultiple(options=weights_options)
+    # weights.loc["Sum"] = weights.sum()
+    # weights = weights.round(3)
+    # weights_options = weights.index
+    multi_select_cluster = widgets.SelectMultiple(options=weights.index)
     plots_output = widgets.Output()
     all_output = widgets.Output()
 
@@ -1063,3 +1064,76 @@ def view_emi_dataset(tem, search_energy=True):
     if tem.edx_bin is not None:
         tab.set_title(i + 1, "Elemental maps (binned)")
     display(tab)
+
+
+def show_abundance_map(ps:PixelSegmenter, weights:pd.DataFrame, components: pd.DataFrame):
+    def plot_rgb(ps, phases:List):
+        shape = ps.get_binary_map_edx_profile(0)[0].shape
+        img = np.zeros((shape[0], shape[1], 3))
+        
+        # make abundance map
+        for i, phase in enumerate(phases):
+            if phase!='None':
+                cpnt_weights = weights[phase]/weights[phase].max()
+                tmp = np.zeros(shape)
+                for j in range(ps.n_components):
+                    idx = ps.get_binary_map_edx_profile(j)[1]
+                    tmp[idx] = cpnt_weights[j]
+                img[:, :, i] = tmp
+            else:
+                img[:, :, i] = np.zeros(shape)
+
+        fig, axs = plt.subplots(1, 1, dpi=96)
+        axs.imshow(img, alpha=0.95)
+        axs.axis("off")
+        plt.show()
+        return fig
+    
+    cpnt_names = [f'cpnt_{i}' for i in range(len(weights.columns))] 
+    cpnt_options = [x for x in zip(cpnt_names, weights.columns)] + [('None', 'None')]
+    dropdown_r = widgets.Dropdown(options=cpnt_options, value='None', description="Red:")
+    dropdown_g = widgets.Dropdown(options=cpnt_options, value='None', description="Green:")
+    dropdown_b = widgets.Dropdown(options=cpnt_options, value='None', description="Blue:")
+
+    plots_output = widgets.Output()
+    with plots_output:
+        fig = plot_rgb(
+            ps,
+            phases=['None', 'None', 'None'],
+        )
+        save_fig(fig)
+
+    def dropdown_r_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = plot_rgb(
+                ps,
+                phases=[change.new, dropdown_g.value, dropdown_b.value],
+            )
+            save_fig(fig)
+
+    def dropdown_g_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = plot_rgb(
+                ps,
+                phases=[dropdown_r.value, change.new, dropdown_b.value],
+            )
+            save_fig(fig)
+
+    def dropdown_b_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = plot_rgb(
+                ps,
+                phases=[dropdown_r.value, dropdown_g.value, change.new],
+            )
+            save_fig(fig)
+
+    dropdown_r.observe(dropdown_r_eventhandler, names="value")
+    dropdown_g.observe(dropdown_g_eventhandler, names="value")
+    dropdown_b.observe(dropdown_b_eventhandler, names="value")
+    color_box = widgets.VBox([dropdown_r, dropdown_g, dropdown_b])
+
+    display(color_box)
+    display(plots_output)
