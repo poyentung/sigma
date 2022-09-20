@@ -1,6 +1,7 @@
 import os
 import torch
 import datetime
+from typing import Dict
 import numpy as np
 import torch.nn as nn
 from torch.optim import Adam
@@ -73,22 +74,22 @@ class Experiment(object):
     def run_model(
         self,
         num_epochs: int,
-        patience: int,
         batch_size: int,
-        learning_rate=1e-4,
-        weight_decay=0.0,
-        task="train_eval",
+        patience: int = 50,
+        learning_rate: float = 1e-4,
+        weight_decay: float = 0.0,
+        task: str = "train_eval",
         noise_added=None,
-        criterion="MSE",
-        KLD_lambda=1e-4,
-        print_latent=False,
-        lr_scheduler_args={
-            "factor": 0.5,
-            "verbose": True,
-            "patience": 5,
-            "threshold": 1e-2,
-            "min_lr": 1e-7,
-        },
+        criterion: str = "MSE",
+        KLD_lambda:float = 1e-4,
+        print_latent: bool = False,
+        lr_scheduler_args: Dict={
+                            "factor": 0.5,
+                            "verbose": True,
+                            "patience": 5,
+                            "threshold": 1e-2,
+                            "min_lr": 1e-7,
+                        },
     ):
         # Loss functions
         if criterion == "MSE":

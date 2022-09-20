@@ -5,7 +5,7 @@ import os
 import random
 import numpy as np
 import pandas as pd
-from typing import List
+from typing import List, Dict
 import hyperspy.api as hs
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -367,17 +367,31 @@ def view_rgb(sem):
     display(plots_output)
 
 
-def view_pixel_distributions(sem, norm_list=[], peak="Fe_Ka", cmap="viridis"):
-    out = widgets.Output()
-    with out:
+def view_pixel_distributions(sem, norm_list=[], cmap="viridis"):
+    peak_options = sem.feature_list
+    dropdown_peaks = widgets.Dropdown(options=peak_options, description="Element:")
+    
+    plots_output = widgets.Output()
+    
+    with plots_output:
         fig = visual.plot_pixel_distributions(
-            sem=sem, norm_list=norm_list, peak=peak, cmap=cmap
-        )
+            sem=sem, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
+            )
         plt.show()
-
-    out_box = widgets.Box([out])
+        save_fig(fig)
+            
+    def dropdown_option_eventhandler(change):
+        plots_output.clear_output()
+        with plots_output:
+            fig = visual.plot_pixel_distributions(
+            sem=sem, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
+            )
+            plt.show()
+            save_fig(fig)
+    
+    dropdown_peaks.observe(dropdown_option_eventhandler, names="value")
+    out_box = widgets.VBox([dropdown_peaks, plots_output])    
     display(out_box)
-    save_fig(fig)
 
 
 def view_intensity_maps(edx, element_list):
@@ -385,10 +399,10 @@ def view_intensity_maps(edx, element_list):
 
 
 def view_bic(
-    latent,
-    n_components=20,
-    model="BayesianGaussianMixture",
-    model_args={"random_state": 6},
+    latent: np.ndarray,
+    n_components: int = 20,
+    model: str = "BayesianGaussianMixture",
+    model_args: Dict = {"random_state": 6},
 ):
     bic_list = PixelSegmenter.bic(latent, n_components, model, model_args)
     fig = go.Figure(

@@ -4,6 +4,7 @@
 from sigma.utils.load import SEMDataset
 from sigma.utils.visualisation import make_colormap
 
+from typing import Dict
 import hyperspy.api as hs
 import numpy as np
 import pandas as pd
@@ -23,11 +24,11 @@ import seaborn as sns
 class PixelSegmenter(object):
     def __init__(
         self,
-        latent: np,
-        dataset_norm: np,
+        latent: np.ndarray,
+        dataset_norm: np.ndarray,
         sem: SEMDataset,
-        method="BayesianGaussianMixture",
-        method_args={"n_components": 8, "random_state": 4},
+        method: str = "BayesianGaussianMixture",
+        method_args: Dict = {"n_components": 8, "random_state": 4},
     ):
 
         self.latent = latent
