@@ -2,10 +2,14 @@
 
 **Spectral Interpretation using Gaussian Mixtures and Autoencoder (SIGMA)** is an open-source Python library for phase identification and spectrum analysis for energy dispersive x-ray spectroscopy (EDS) datasets. The library mainly builds on the [**Hyperspy**](https://hyperspy.org/), [**Pytorch**](https://pytorch.org/), and [**Scikit-learn**](https://scikit-learn.org/stable/). The current version only supports `.bcf` and `.emi` files. The publication is available [**here**](https://doi.org/10.1002/essoar.10511396.1).<br />
 
-**Try your dataset on SIGMA with Colab in the cloud:** <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/tutorial_colab.ipynb">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+**Try your dataset on SIGMA with Colab in the cloud:** 
+| Type of data  | Colab link    
+ :---: | :---: 
+| SEM | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| TEM | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/tutorial_colab_tem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
 
-If analysis using sigma forms a part of published work please cite the <a href="https://zenodo.org/badge/latestdoi/415443021"><img src="https://zenodo.org/badge/415443021.svg" alt="DOI"></a><br /> 
+
+If analysis using SIGMA forms a part of published work please cite the manuscript [DOI:10.1002/essoar.10511396.1](https://doi.org/10.1002/essoar.10511396.1)
 
 ## Installation
 1. Create a [**Python>=3.7.0**](https://www.python.org/) environment with [**conda**](https://docs.conda.io/en/latest/):
