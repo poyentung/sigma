@@ -62,3 +62,7 @@ Thumbs.db
 # Autoencoder models #
 Model*
 results/
+
+# STEM files
+*.emi
+*.ser
