@@ -2,6 +2,8 @@ __pycache__/
 .ipynb_checkpoints/
 .spyproject/config/
 .ipynb
+tutorial_stem_edx.ipynb
+tutorial_stem_image.ipynb
 
 # Compiled source #
 ###################
