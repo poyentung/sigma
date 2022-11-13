@@ -46,6 +46,8 @@ setup(
         "numpy          >=1.19.5",
         "scikit-learn   >= 1.0.2",  # reason unknown
         "scipy",
+        "hdbscan",
+        "joblib         ==1.1.0",
         "tqdm           >=4.62.3",
         "seaborn        >=0.11.2",
         "plotly         >=4.4.1",
