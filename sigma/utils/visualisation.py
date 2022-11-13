@@ -1,4 +1,5 @@
-from sigma.utils.load import SEMDataset
+from sigma.utils.load import SEMDataset, IMAGEDataset
+from sigma.utils.loadtem import TEMDataset
 
 import hyperspy.api as hs
 import numpy as np
@@ -7,6 +8,7 @@ import matplotlib as mpl
 import matplotlib.colors as mcolors
 import seaborn as sns
 import plotly.graph_objects as go
+from typing import Union, List, Tuple
 from hyperspy._signals.eds_sem import EDSSEMSpectrum
 from hyperspy.signals import EDSTEMSpectrum
 from matplotlib import pyplot as plt
@@ -168,17 +170,17 @@ def plot_intensity_maps(edx, element_list, colors=[], save=None):
     return fig
 
 
-def plot_rgb(sem, elemental_maps, elements=[]):
+def plot_rgb(dataset:Union[SEMDataset, TEMDataset, IMAGEDataset], elemental_maps:np.ndarray, elements:List=[]):
     assert len(elements) < 4
     if not elements:
-        elements = sem.feature_list[:3]
+        elements = dataset.feature_list[:3]
     if not isinstance(elemental_maps, np.ndarray):
         elemental_maps = elemental_maps.data
     shape = elemental_maps.shape[:2]
     img = np.zeros((shape[0], shape[1], 3))
 
     for i, element in enumerate(elements):
-        idx = sem.feature_dict[element]
+        idx = dataset.feature_dict[element]
         img[:, :, i] = elemental_maps[:, :, idx]
 
     fig, axs = plt.subplots(1, 1, dpi=96)
@@ -189,12 +191,14 @@ def plot_rgb(sem, elemental_maps, elements=[]):
 
 
 def plot_pixel_distributions(
-    sem: SEMDataset, norm_list=[], peak="Fe_Ka", cmap="viridis"
+    dataset:Union[SEMDataset, TEMDataset, IMAGEDataset], norm_list:List=[], peak:str="Fe_Ka", cmap:str="viridis"
 ):
-    idx = sem.feature_dict[peak]
+    idx = dataset.feature_dict[peak]
     sns.set_style("ticks")
-
-    normalised_elemental_data = sem.get_feature_maps()
+    if type(dataset)!=IMAGEDataset:
+        normalised_elemental_data = dataset.get_feature_maps()  
+    else:
+        normalised_elemental_data = dataset.chemical_maps
     num_norm_process = len(norm_list) + 1
     norm_dataset_labels = ["raw_data"]
     norm_datasets_list = [normalised_elemental_data]

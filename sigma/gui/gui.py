@@ -1,15 +1,18 @@
 from sigma.utils import visualisation as visual
 from sigma.src.segmentation import PixelSegmenter
+from sigma.utils.load import SEMDataset, IMAGEDataset
+from sigma.utils.loadtem import TEMDataset
 
 import os
 import random
 import numpy as np
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Union
 import hyperspy.api as hs
 from matplotlib import pyplot as plt
 import matplotlib as mpl
-from matplotlib import cm
+from matplotlib import cm, colors
+from skimage.transform import resize
 import seaborn as sns
 import altair as alt
 import plotly.graph_objects as go
@@ -201,46 +204,46 @@ def pick_color(plot_func, *args, **kwargs):
     display(final_box)
 
 
-def view_bcf_dataset(sem, search_energy=True):
+def view_bcf_dataset(dataset:SEMDataset, search_energy=True):
     if search_energy == True:
         search_energy_peak()
 
     bse_out = widgets.Output()
     with bse_out:
-        sem.bse.plot(colorbar=False)
+        dataset.bse.plot(colorbar=False)
         plt.show()
         fig, axs = plt.subplots(1, 1)
-        axs.imshow(sem.bse.data, cmap="gray")
+        axs.imshow(dataset.bse.data, cmap="gray")
         axs.axis("off")
         save_fig(fig)
         plt.close()
 
     sum_spec_out = widgets.Output()
     with sum_spec_out:
-        visual.plot_sum_spectrum(sem.edx)
+        visual.plot_sum_spectrum(dataset.edx)
 
     elemental_map_out = widgets.Output()
     with elemental_map_out:
         pick_color(
-            visual.plot_intensity_maps, edx=sem.edx, element_list=sem.feature_list
+            visual.plot_intensity_maps, edx=dataset.edx, element_list=dataset.feature_list
         )
         # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
         # save_fig(fig)
 
-    if sem.edx_bin is not None:
+    if dataset.edx_bin is not None:
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
             pick_color(
                 visual.plot_intensity_maps,
-                edx=sem.edx_bin,
-                element_list=sem.feature_list,
+                edx=dataset.edx_bin,
+                element_list=dataset.feature_list,
             )
             # fig = visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
             # save_fig(fig)
 
     default_elements = ""
-    for i, element in enumerate(sem.feature_list):
-        if i == len(sem.feature_list) - 1:
+    for i, element in enumerate(dataset.feature_list):
+        if i == len(dataset.feature_list) - 1:
             default_elements += element
         else:
             default_elements += element + ", "
@@ -265,20 +268,20 @@ def view_bcf_dataset(sem, search_energy=True):
         out.clear_output()
         with out:
             feature_list = text.value.replace(" ", "").split(",")
-            sem.set_feature_list(feature_list)
+            dataset.set_feature_list(feature_list)
 
         sum_spec_out.clear_output()
         with sum_spec_out:
-            visual.plot_sum_spectrum(sem.edx)
+            visual.plot_sum_spectrum(dataset.edx)
 
         elemental_map_out.clear_output()
         with elemental_map_out:
-            visual.plot_intensity_maps(sem.edx, sem.feature_list)
+            visual.plot_intensity_maps(dataset.edx, dataset.feature_list)
 
-        if sem.edx_bin is not None:
+        if dataset.edx_bin is not None:
             elemental_map_out_bin.clear_output()
             with elemental_map_out_bin:
-                visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+                visual.plot_intensity_maps(dataset.edx_bin, dataset.feature_list)
 
     button.on_click(set_to)
     all_widgets = widgets.HBox([text, button])
@@ -286,7 +289,7 @@ def view_bcf_dataset(sem, search_energy=True):
     display(out)
 
     tab_list = [bse_out, sum_spec_out, elemental_map_out]
-    if sem.edx_bin is not None:
+    if dataset.edx_bin is not None:
         tab_list += [elemental_map_out_bin]
 
     tab = widgets.Tab(tab_list)
@@ -294,25 +297,93 @@ def view_bcf_dataset(sem, search_energy=True):
     tab.set_title(1, "EDX sum spectrum")
     tab.set_title(2, "Elemental maps (raw)")
     i = 2
-    if sem.edx_bin is not None:
+    if dataset.edx_bin is not None:
         tab.set_title(i + 1, "Elemental maps (binned)")
     display(tab)
 
+def view_im_dataset(im):
+    intensity_out = widgets.Output()
+    with intensity_out:
+        fig, axs = plt.subplots(1, 1)
+        axs.imshow(im.intensity_map, cmap="gray")
+        axs.axis("off")
+        save_fig(fig)
+        plt.show()
 
-def view_rgb(sem):
+    elemental_map_out = widgets.Output()
+    with elemental_map_out:
+        pick_color(
+            visual.plot_intensity_maps, 
+            edx=im.chemical_maps, 
+            element_list=im.feature_list
+        )
+        # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+        # save_fig(fig)
+
+    default_elements = ""
+    for i, element in enumerate(im.feature_list):
+        if i == len(im.feature_list) - 1:
+            default_elements += element
+        else:
+            default_elements += element + ", "
+
+    layout = widgets.Layout(width="600px", height="40px")
+    text = widgets.Text(
+        value=default_elements,
+        placeholder="Type something",
+        description="Feature list:",
+        disabled=False,
+        continuous_update=True,
+        # display='flex',
+        # flex_flow='column',
+        align_items="stretch",
+        layout=layout,
+    )
+
+    button = widgets.Button(description="Set")
+    out = widgets.Output()
+
+    def set_to(_):
+        out.clear_output()
+        with out:
+            feature_list = text.value.replace(" ", "").split(",")
+            im.set_feature_list(feature_list)
+
+        elemental_map_out.clear_output()
+        with elemental_map_out:
+            visual.plot_intensity_maps(im.chemical_maps, im.feature_list)
+
+
+    button.on_click(set_to)
+    all_widgets = widgets.HBox([text, button])
+    display(all_widgets)
+    display(out)
+
+    tab_list = [intensity_out, elemental_map_out]
+
+    tab = widgets.Tab(tab_list)
+    tab.set_title(0, "Intensity image")
+    tab.set_title(1, "Elemental maps (raw)")
+    display(tab)
+
+
+def view_rgb(dataset:Union[SEMDataset,TEMDataset,IMAGEDataset]):
     option_dict = {}
-    if isinstance(sem.normalised_elemental_data, np.ndarray):
-        option_dict["normalised"] = sem.normalised_elemental_data
+    if isinstance(dataset.normalised_elemental_data, np.ndarray):
+        option_dict["normalised"] = dataset.normalised_elemental_data
 
-    option_dict["binned"] = sem.edx_bin.data
-    option_dict["raw"] = sem.edx.data
+    if type(dataset) != IMAGEDataset:
+        option_dict["binned"] = dataset.edx_bin.data
+        option_dict["raw"] = dataset.edx.data
+    else:
+        option_dict["raw"] = dataset.chemical_maps
 
     dropdown_option = widgets.Dropdown(
         options=list(option_dict.keys()), description="Data:"
     )
-    dropdown_r = widgets.Dropdown(options=sem.feature_list, description="Red:")
-    dropdown_g = widgets.Dropdown(options=sem.feature_list, description="Green:")
-    dropdown_b = widgets.Dropdown(options=sem.feature_list, description="Blue:")
+    dropdown_r = widgets.Dropdown(options=dataset.feature_list, description="Red:")
+    dropdown_g = widgets.Dropdown(options=dataset.feature_list, description="Green:")
+    dropdown_b = widgets.Dropdown(options=dataset.feature_list, description="Blue:")
 
     plots_output = widgets.Output()
 
@@ -320,7 +391,7 @@ def view_rgb(sem):
         plots_output.clear_output()
         with plots_output:
             fig = visual.plot_rgb(
-                sem,
+                dataset,
                 elemental_maps=option_dict[change.new],
                 elements=[dropdown_r.value, dropdown_g.value, dropdown_b.value],
             )
@@ -330,7 +401,7 @@ def view_rgb(sem):
         plots_output.clear_output()
         with plots_output:
             fig = visual.plot_rgb(
-                sem,
+                dataset,
                 elemental_maps=option_dict[dropdown_option.value],
                 elements=[change.new, dropdown_g.value, dropdown_b.value],
             )
@@ -340,7 +411,7 @@ def view_rgb(sem):
         plots_output.clear_output()
         with plots_output:
             fig = visual.plot_rgb(
-                sem,
+                dataset,
                 elemental_maps=option_dict[dropdown_option.value],
                 elements=[dropdown_r.value, change.new, dropdown_b.value],
             )
@@ -350,7 +421,7 @@ def view_rgb(sem):
         plots_output.clear_output()
         with plots_output:
             fig = visual.plot_rgb(
-                sem,
+                dataset,
                 elemental_maps=option_dict[dropdown_option.value],
                 elements=[dropdown_r.value, dropdown_g.value, change.new],
             )
@@ -367,15 +438,15 @@ def view_rgb(sem):
     display(plots_output)
 
 
-def view_pixel_distributions(sem, norm_list=[], cmap="viridis"):
-    peak_options = sem.feature_list
+def view_pixel_distributions(dataset:Union[SEMDataset, TEMDataset, IMAGEDataset], norm_list:List=[], cmap:str="viridis"):
+    peak_options = dataset.feature_list
     dropdown_peaks = widgets.Dropdown(options=peak_options, description="Element:")
     
     plots_output = widgets.Output()
     
     with plots_output:
         fig = visual.plot_pixel_distributions(
-            sem=sem, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
+            dataset=dataset, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
             )
         plt.show()
         save_fig(fig)
@@ -384,7 +455,7 @@ def view_pixel_distributions(sem, norm_list=[], cmap="viridis"):
         plots_output.clear_output()
         with plots_output:
             fig = visual.plot_pixel_distributions(
-            sem=sem, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
+            dataset=dataset, norm_list=norm_list, peak=dropdown_peaks.value, cmap=cmap
             )
             plt.show()
             save_fig(fig)
@@ -518,19 +589,26 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
         r, g, b = int(r * 255), int(g * 255), int(b * 255)
         color = "#{:02x}{:02x}{:02x}".format(r, g, b)
         phase_colors.append(color)
+
+   
     domain = [i for i in range(ps.n_components)]
     range_ = phase_colors
 
     latent, dataset, feature_list, labels = (
         ps.latent,
-        ps.dataset,
-        ps.sem.feature_list,
+        ps.dataset.normalised_elemental_data,
+        ps.dataset.feature_list,
         ps.labels,
     )
     x_id, y_id = np.meshgrid(range(ps.width), range(ps.height))
     x_id = x_id.ravel().reshape(-1, 1)
     y_id = y_id.ravel().reshape(-1, 1)
-    z_id = (ps.bse.data / ps.bse.data.max()).reshape(-1, 1)
+
+    if type(ps.dataset) != IMAGEDataset:
+        z_id = (ps.bse.data / ps.bse.data.max()).reshape(-1, 1)
+    else:
+        intensity_map = resize(ps.dataset.intensity_map, ps.dataset.chemical_maps.shape[:2])
+        z_id = (intensity_map / intensity_map.max()).reshape(-1, 1)
 
     combined = np.concatenate(
         [
@@ -544,10 +622,13 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
         axis=1,
     )
 
-    sampled_combined = random.choices(
-        combined, k=int(latent.shape[0] // (ratio_to_be_shown ** -1))
-    )
-    sampled_combined = np.array(sampled_combined)
+    if ratio_to_be_shown != 1.0:
+        sampled_combined = random.choices(
+            combined, k=int(latent.shape[0] // (ratio_to_be_shown ** -1))
+        )
+        sampled_combined = np.array(sampled_combined)
+    else:
+        sampled_combined = combined
 
     source = pd.DataFrame(
         sampled_combined,
@@ -558,18 +639,25 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
 
     # Brush
     brush = alt.selection(type="interval")
+    interaction = alt.selection(
+        type="interval",
+        bind="scales",
+        on="[mousedown[event.shiftKey], mouseup] > mousemove",
+        translate="[mousedown[event.shiftKey], mouseup] > mousemove!",
+        zoom="wheel![event.shiftKey]",
+    )
 
     # Points
     points = (
         alt.Chart(source)
-        .mark_circle(size=2,)
+        .mark_circle(size=3,)
         .encode(
             x="x:Q",
             y="y:Q",  # use min extent to stabilize axis title placement
             color=alt.Color(
                 "Cluster_id:N", scale=alt.Scale(domain=domain, range=range_)
             ),
-            opacity=alt.condition(brush, alt.value(0.7), alt.value(0.25)),
+            opacity=alt.condition(brush, alt.value(0.9), alt.value(0.25)),
             tooltip=[
                 "Cluster_id:N",
                 alt.Tooltip("x:Q", format=",.2f"),
@@ -578,7 +666,10 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
         )
         .properties(width=450, height=450)
         .properties(title=alt.TitleParams(text="Latent space"))
-        .add_selection(brush)
+        .add_selection(
+            brush,
+            interaction
+            )
     )
 
     # Base chart for data tables
@@ -586,7 +677,7 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
 
     # Data Bars
     columns = list()
-    domain_barchart = (0, 1) if ps.dataset.max() < 1.0 else (-4, 4)
+    domain_barchart = (0, 1) if ps.dataset_norm.max() < 1.0 else (-4, 4)
     for item in feature_list:
         columns.append(
             ranked_text.encode(
@@ -602,7 +693,7 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
         )
         bse = (
             alt.Chart(bse_df)
-            .mark_circle(size=3)
+            .mark_square(size=6)
             .encode(
                 x=alt.X("x_bse:O", axis=None),
                 y=alt.Y("y_bse:O", axis=None),
@@ -610,20 +701,20 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
                     "z_bse:Q", scale=alt.Scale(scheme="greys", domain=[1.0, 0.0])
                 ),
             )
-            .properties(width=ps.width, height=ps.height)
+            .properties(width=ps.width*2, height=ps.height*2)
         )
         heatmap = (
             alt.Chart(source)
-            .mark_circle(size=3)
+            .mark_square(size=5)
             .encode(
                 x=alt.X("x_id:O", axis=None),
                 y=alt.Y("y_id:O", axis=None),
                 color=alt.Color(
                     "Cluster_id:N", scale=alt.Scale(domain=domain, range=range_)
                 ),
-                opacity=alt.condition(brush, alt.value(1), alt.value(0)),
+                opacity=alt.condition(brush, alt.value(0.75), alt.value(0)),
             )
-            .properties(width=ps.width, height=ps.height)
+            .properties(width=ps.width*2, height=ps.height*2)
             .add_selection(brush)
         )
         heatmap_bse = bse + heatmap
