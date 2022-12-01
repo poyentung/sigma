@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import hyperspy.api as hs
@@ -37,9 +36,11 @@ class SEMDataset(object):
 
         self.edx_bin = None
         self.bse_bin = None
+        
+        # reserve a copy of the raw data for quantification
+        self.edx_raw = self.edx.deepcopy()
 
         self.feature_list = self.edx.metadata.Sample.xray_lines
-
         self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}
 
     def set_feature_list(self, feature_list):
@@ -55,6 +56,7 @@ class SEMDataset(object):
         x, y = size[0], size[1]
         self.edx_bin = self.edx.rebin(scale=(x, y, 1))
         self.bse_bin = self.bse.rebin(scale=(x, y))
+        self.edx_raw = self.edx_bin.deepcopy()
         return (self.edx_bin, self.bse_bin)
 
     def remove_fist_peak(self, end: float):
@@ -80,6 +82,8 @@ class SEMDataset(object):
         else:
             edx_norm = self.edx
         edx_norm.data = edx_norm.data / edx_norm.data.sum(axis=2, keepdims=True)
+        if np.isnan(np.sum(edx_norm.data)):
+            edx_norm.data = np.nan_to_num(edx_norm.data)
         return edx_norm
 
     def peak_denoising_PCA(

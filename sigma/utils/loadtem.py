@@ -22,6 +22,7 @@ class TEMDataset(SEMDataset):
 
             self.edx_bin = None
             self.bse_bin = None
+            self.edx_raw = self.edx.deepcopy()
             self.feature_list = []
 
     def set_xray_lines(self, xray_lines: List[str]):

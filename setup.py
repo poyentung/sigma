@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
-__version__ = "0.1.31"
+__version__ = "0.1.32"
     
 setup(
     name='emsigma',
@@ -51,7 +51,11 @@ setup(
         "tqdm           >=4.62.3",
         "seaborn        >=0.11.2",
         "plotly         >=4.4.1",
-        "altair         >=4.2.0"
+        "altair         >=4.2.0",
+        "joblib         ==1.1.0",
+        "jupyterlab     >=3", 
+        "ipywidgets     >=7.6",
+        "jupyter-dash",
         
     ],
     python_requires=">=3.7",

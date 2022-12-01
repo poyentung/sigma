@@ -2,6 +2,7 @@ from sigma.utils import visualisation as visual
 from sigma.src.segmentation import PixelSegmenter
 from sigma.utils.load import SEMDataset, IMAGEDataset
 from sigma.utils.loadtem import TEMDataset
+from sigma.src.utils import k_factors_120kV
 
 import os
 import random
@@ -1246,3 +1247,55 @@ def show_abundance_map(ps:PixelSegmenter, weights:pd.DataFrame, components: pd.D
 
     display(color_box)
     display(plots_output)
+
+    
+def plot_ternary_composition(ps:PixelSegmenter):
+    # cluster_num:int,
+    # elements:List,
+    # k_factors:List[float]=None,
+    # composition_units:str='atomic',
+    cluster_options = range(ps.n_components)
+    dropdown_cluster = widgets.Dropdown(options=cluster_options, description='cluster',value=None, )
+    
+    element_options = []
+    for el in ps.dataset.feature_list:
+        if el in k_factors_120kV.keys():
+            element_options.append(el)
+    
+    dropdown_element1 = widgets.Dropdown(options=element_options, description='element1',value=None)
+    dropdown_element2 = widgets.Dropdown(options=element_options, description='element2',value=None)
+    dropdown_element3 = widgets.Dropdown(options=element_options, description='element3',value=None)
+    
+    plots_output = widgets.Output()
+    
+    button = widgets.Button(description="Calculate")
+    out = widgets.Output()
+
+    def button_evenhandler(_):
+        plots_output.clear_output()
+        with plots_output:
+            try:
+                ps.plot_ternary_composition(
+                    cluster_num=int(dropdown_cluster.value),
+                    elements=[dropdown_element1.value, dropdown_element2.value, dropdown_element3.value],
+                )
+            except ValueError:
+                print('Oops. Please try different combiniations of elements')
+            except TypeError:
+                print('Please select cluster number')
+            except AttributeError:
+                print('Please select elements')
+
+    button.on_click(button_evenhandler)
+    
+    option_box = widgets.HBox([dropdown_cluster, 
+                               dropdown_element1, 
+                               dropdown_element2,
+                               dropdown_element3, 
+                               button],
+                              layout=Layout(flex="flex-start", width="80%",align_items='center'),)
+    display(option_box)
+    display(plots_output)
+    
+            
+    

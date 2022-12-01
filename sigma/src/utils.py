@@ -50,3 +50,24 @@ class FeatureDataset(Dataset):
             return torch.Tensor(out)
         else:
             return torch.Tensor(self.dataset[idx])
+
+
+# Ref: https://www.globalsino.com/EM/page4624.html
+k_factors_120kV = dict(Mg_Ka=1.02,
+                       Al_Ka=0.86,
+                       Si_Ka=0.76,
+                       P_Ka=0.77,
+                       S_Ka=0.83,
+                       K_Ka=0.86,
+                       Ca_Ka=0.88,
+                       Ti_Ka=0.86,
+                       Cr_Ka=0.9,
+                       Mn_Ka=1.04,
+                       Fe_Ka=1.0,
+                       Co_Ka=0.98,
+                       Ni_Ka=1.07,
+                       Cu_Ka=1.17,
+                       Zn_Ka=1.19,
+                       Nb_Ka=2.14,
+                       Mo_Ka=3.8,
+                       Ag_Ka=9.52)

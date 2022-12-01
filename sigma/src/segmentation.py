@@ -4,8 +4,9 @@
 from sigma.utils.load import SEMDataset, IMAGEDataset
 from sigma.utils.loadtem import TEMDataset
 from sigma.utils.visualisation import make_colormap
+from sigma.src.utils import k_factors_120kV
 
-from typing import Dict, Union
+from typing import List, Dict, Union
 import hyperspy.api as hs
 import numpy as np
 import pandas as pd
@@ -22,6 +23,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import matplotlib.colors as mcolors
 import seaborn as sns
+import plotly.graph_objects as go
+import plotly.express as px
 
 
 class PixelSegmenter(object):
@@ -457,7 +460,38 @@ class PixelSegmenter(object):
                     ]
 
         return pd.DataFrame(data=stat_info).round(3)
+    
+    def cluster_quantification(self,
+                               cluster_num:int,
+                               elements:List,
+                               k_factors:List[float]=None,
+                               composition_units:str='atomic',
+                               use_label:bool=True)-> pd.DataFrame:
+        
+        # get indices of the specified cluster
+        binary_map, binary_map_indices, _ = self.get_binary_map_edx_profile(cluster_num=cluster_num,use_label=use_label)
+        indices = np.column_stack(binary_map_indices)
+        indices = tuple(map(tuple, indices))
+        
+        # set elements for quantification
+        edx_raw = self.dataset.edx_raw
+        edx_raw.metadata.Sample.xray_lines = elements
+        intensities = edx_raw.get_lines_intensity()
+        
+        if k_factors is None:
+            try:
+                k_factors = [k_factors_120kV[el] for el in elements]
+            except KeyError:
+                print('The k factor is not in the database.')
+        
+        compositions = edx_raw.quantification(intensities, method='CL',factors=k_factors,composition_units='atomic')
+        cluster_element_intensities = [c.data[binary_map.astype(bool)] for c in compositions]
+        cluster_element_intensities = np.column_stack(cluster_element_intensities)
+        
+        return pd.DataFrame(cluster_element_intensities, columns = [el.split('_')[0] for el in elements])
 
+        
+        
     #################
     # Visualization #--------------------------------------------------------------
     #################
@@ -1091,3 +1125,23 @@ class PixelSegmenter(object):
                 fontsize=7.5,
             )
         plt.show()
+    
+    def plot_ternary_composition(self, **kwargs): # see args for cluster_quantification
+        cluster_element_intensities = self.cluster_quantification(**kwargs)
+        
+        fig = go.Figure(px.scatter_ternary(cluster_element_intensities, 
+                                   *cluster_element_intensities.columns,
+                                   template='none',
+                                   opacity=0.5)
+        )
+
+        fig.update_layout(title="Ternary diagram in at.%",
+                          title_x=0.5,
+                          width=500,
+                          height=500)
+        
+        fig.update_traces(marker=dict(size=3.0,
+                                      line=dict(width=0)),
+                          selector=dict(mode='markers'),
+                         )
+        fig.show()
