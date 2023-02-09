@@ -11,8 +11,7 @@
 | TEM | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_tem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
 | Images | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_image.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
 
-
-If analysis using SIGMA forms a part of published work please cite the manuscript [DOI:10.1002/essoar.10511396.1](https://doi.org/10.1002/essoar.10511396.1)
+This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No 101005611: [**The EXCITE Network**](www.excite-network.eu). If analysis using SIGMA forms a part of published work please cite the [manuscript](https://doi.org/10.1029/2022GC010530).
 
 ## Installation
 1. Create a [**Python>=3.7.0**](https://www.python.org/) environment with [**conda**](https://docs.conda.io/en/latest/):
