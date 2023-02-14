@@ -3,27 +3,53 @@ import hyperspy.api as hs
 import numpy as np
 from sigma.utils.load import SEMDataset
 from hyperspy.signals import Signal2D, Signal1D
+from hyperspy._signals.eds_tem import EDSTEMSpectrum
 
 
 class TEMDataset(SEMDataset):
     def __init__(self, file_path: str):
-        if type(hs.load(file_path)) == Signal2D:
+        hs_data = hs.load(file_path)
+        if type(hs_data) == Signal2D:
             self.stem = hs.load(file_path)
-
-        elif type(hs.load(file_path)) == Signal1D:
-            self.edx = hs.load(file_path, signal_type="EDS_TEM")
-            self.bse = Signal2D(self.edx.data.sum(axis=2))
-            self.edx.change_dtype("float32")
-
-            self.edx.metadata.set_item("Sample.xray_lines", [])
-            self.edx.axes_manager["Energy"].scale = 0.01 * 8.07 / 8.08
-            self.edx.axes_manager["Energy"].offset = -0.01
-            self.edx.axes_manager["Energy"].units = "keV"
-
+        else:
             self.edx_bin = None
             self.bse_bin = None
-            self.edx_raw = self.edx.deepcopy()
-            self.feature_list = []
+            
+            if type(hs_data) == Signal1D:
+                self.edx = hs.load(file_path, signal_type="EDS_TEM")
+                self.bse = Signal2D(self.edx.data.sum(axis=2))
+                self.edx.change_dtype("float32")
+                self.edx_raw = self.edx.deepcopy()
+
+                self.edx.metadata.set_item("Sample.xray_lines", [])
+                self.edx.axes_manager["Energy"].scale = 0.01 * 8.07 / 8.08
+                self.edx.axes_manager["Energy"].offset = -0.01
+                self.edx.axes_manager["Energy"].units = "keV"
+
+                self.feature_list = []
+
+            elif type(hs_data) is list:
+                bcf_dataset = hs_data
+                self.bse = None
+                for dataset in bcf_dataset:
+                    if (self.bse is None) and (type(dataset) is Signal2D):
+                        self.original_bse = dataset
+                        self.bse = dataset  # load BSE data
+                    elif (self.bse is not None) and (type(dataset) is Signal2D):
+                        old_w, old_h = self.bse.data.shape
+                        new_w, new_h = dataset.data.shape
+                        if (new_w + new_h) < (old_w + old_h):
+                            self.original_bse = dataset
+                            self.bse = dataset
+                    elif type(dataset) is EDSTEMSpectrum:
+                        self.original_edx = dataset
+                        self.edx = dataset  # load EDX data from bcf file
+                        
+                self.edx.change_dtype("float32")  
+                self.edx_raw = self.edx.deepcopy()
+
+                self.feature_list = self.edx.metadata.Sample.xray_lines
+                self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}
 
     def set_xray_lines(self, xray_lines: List[str]):
         """
