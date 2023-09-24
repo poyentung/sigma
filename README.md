@@ -1,22 +1,22 @@
 ## Description
 
-**Spectral Interpretation using Gaussian Mixtures and Autoencoder (SIGMA)** is an open-source Python library for phase identification and spectrum analysis for energy dispersive x-ray spectroscopy (EDS) datasets. The library mainly builds on the [**Hyperspy**](https://hyperspy.org/), [**Pytorch**](https://pytorch.org/), and [**Scikit-learn**](https://scikit-learn.org/stable/). The current version only supports `.bcf` and `.emi` files. The publication is available [**here**](https://doi.org/10.1002/essoar.10511396.1).<br />
+**Spectral Interpretation using Gaussian Mixtures and Autoencoder (SIGMA)** is an open-source Python library for phase identification and spectrum analysis for energy dispersive x-ray spectroscopy (EDS) datasets. The library mainly builds on the [**Hyperspy**](https://hyperspy.org/), [**Pytorch**](https://pytorch.org/), and [**Scikit-learn**](https://scikit-learn.org/stable/). The publication is available [**here**](https://doi.org/10.1002/essoar.10511396.1).<br />
 
-**(UPDATE)** Now SIGMA (version=0.1.34) can load `individual images` (elemental intensity maps, e.g., `*.tif`).
+**(UPDATE v0.2.0)** SIGMA now supports [**UMAP**](https://umap-learn.readthedocs.io/en/latest/index.html#) for dimensionality reduction and [**HDBSCAN**](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.HDBSCAN.html) for clustering.
 
 **Try your dataset on SIGMA with Colab in the cloud:** 
-| Type of data  | Colab link    
- :---: | :---: 
-| SEM | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
-| TEM | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_tem_emi_emd.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
-| Images | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_image.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| Type of data  | Support format | Colab link    
+ :---: | :---: | :---:
+| SEM | `.bcf`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| TEM | `.emi`/`.ser` `.emd`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_tem_emi_emd.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
+| Images | `.tif` `.png` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_image.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
 
 This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No 101005611: [**The EXCITE Network**](https://excite-network.eu/). If analysis using SIGMA forms a part of published work please cite the [manuscript](https://doi.org/10.1029/2022GC010530).
 
 ## Installation
 1. Create a [**Python>=3.10**](https://www.python.org/) environment with [**conda**](https://docs.conda.io/en/latest/):
 ```bash
-conda create -n sigma python=3.10 anaconda
+conda create -n sigma python=3.10
 conda activate sigma
 ```
 
@@ -26,6 +26,9 @@ pip install emsigma
 ```
 
 3. Use the notebook in the tutorial folder to run **SIGMA**.
+```bash
+jupyter-lab
+```
 
 ## Workflow of SIGMA
 1. A neural network autoencoder is trained to learn good representations of elemental pixels in the 2D latent space. <br />
