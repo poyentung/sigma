@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
-__version__ = "0.1.34"
+__version__ = "0.2.0"
     
 setup(
     name='emsigma',
@@ -26,7 +26,7 @@ setup(
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.10",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
@@ -37,28 +37,25 @@ setup(
     packages=find_packages(),
     install_requires=[
         "notebook",
-        "torch          >= 1.10.0",
-        "hyperspy       >= 1.6.5",  
-        "ipywidgets",
-        "lmfit          >= 0.9.12",
-        "matplotlib     >= 3.2.2",  # 3.2.1 failed
-        "numba",
-        "numpy          >=1.19.5",
-        "scikit-learn   >= 1.0.2",  # reason unknown
+        "torch          >= 2.0.1",
+        "hyperspy       >= 1.7.5",  
+        "ipywidgets     >= 8.1.1",
+        "lmfit          >= 1.2.2",
+        "matplotlib     >= 3.8.0", 
+        "numba          >= 0.57.1",
+        "numpy          >=1.24.4",
+        "scikit-learn   >= 1.3.0",
         "scipy",
-        "hdbscan",
-        "joblib         ==1.1.0",
-        "tqdm           >=4.62.3",
-        "seaborn        >=0.11.2",
-        "plotly         >=4.4.1",
-        "altair         >=4.2.0",
-        "joblib         ==1.1.0",
+        "tqdm           >=4.66.1",
+        "seaborn        >=0.12.2",
+        "plotly         >=5.17.0",
+        "altair         >=5.1.1",
         "jupyterlab     >=3", 
         "ipywidgets     >=7.6",
         "jupyter-dash",
         
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     package_data={
         "": ["LICENSE", "README.md"],
         "sigma": ["*.py"],

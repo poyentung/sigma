@@ -3,57 +3,53 @@ import hyperspy.api as hs
 import numpy as np
 from sigma.utils.load import SEMDataset
 from hyperspy.signals import Signal2D, Signal1D
+from hyperspy._signals.signal2d import Signal2D, Signal2D
 from hyperspy._signals.eds_tem import EDSTEMSpectrum
+from .base import BaseDataset
 
-
-class TEMDataset(SEMDataset):
+class TEMDataset(BaseDataset):
     def __init__(self, file_path: str):
-        hs_data = hs.load(file_path)
-        if type(hs_data) == Signal2D:
-            self.stem = hs.load(file_path)
+        super().__init__(file_path)
+        
+        if type(self.base_dataset) == Signal2D:
+            self.stem = self.base_dataset
         else:
-            self.edx_bin = None
-            self.bse_bin = None
-            
-            if type(hs_data) == Signal1D:
-                self.edx = hs.load(file_path, signal_type="EDS_TEM")
-                self.bse = Signal2D(self.edx.data.sum(axis=2))
-                self.edx.change_dtype("float32")
-                self.edx_raw = self.edx.deepcopy()
+            if type(self.base_dataset) == Signal1D:
+                self.spectra = hs.load(file_path, signal_type="EDS_TEM")
+                self.nav_img = Signal2D(self.spectra.data.sum(axis=2))
+                self.spectra.change_dtype("float32")
+                self.spectra_raw = self.spectra.deepcopy()
 
-                self.edx.metadata.set_item("Sample.xray_lines", [])
-                self.edx.axes_manager["Energy"].scale = 0.01 * 8.07 / 8.08
-                self.edx.axes_manager["Energy"].offset = -0.01
-                self.edx.axes_manager["Energy"].units = "keV"
+                self.spectra.metadata.set_item("Sample.xray_lines", [])
+                self.spectra.axes_manager["Energy"].scale = 0.01 * 8.07 / 8.08
+                self.spectra.axes_manager["Energy"].offset = -0.01
+                self.spectra.axes_manager["Energy"].units = "keV"
 
                 self.feature_list = []
-
-            elif type(hs_data) is list:
-                bcf_dataset = hs_data
-                self.bse = None
-                for dataset in bcf_dataset:
-                    if (self.bse is None) and (type(dataset) is Signal2D):
-                        self.original_bse = dataset
-                        self.bse = dataset  # load BSE data
-                    elif (self.bse is not None) and (type(dataset) is Signal2D):
-                        old_w, old_h = self.bse.data.shape
-                        new_w, new_h = dataset.data.shape
-                        if (new_w + new_h) < (old_w + old_h):
-                            self.original_bse = dataset
-                            self.bse = dataset
+            
+            # if data format is .emd file
+            elif type(self.base_dataset) is list: #file_path[-4:]=='.emd' and 
+                emd_dataset = self.base_dataset
+                self.nav_img = None
+                for dataset in emd_dataset:
+                    if (self.nav_img is None) and (dataset.metadata.General.title == "HAADF"):
+                        self.original_nav_img = dataset
+                        self.nav_img = dataset  # load HAADF data
                     elif type(dataset) is EDSTEMSpectrum:
-                        self.original_edx = dataset
-                        self.edx = dataset  # load EDX data from bcf file
-                        
-                self.edx.change_dtype("float32")  
-                self.edx_raw = self.edx.deepcopy()
+                        self.original_spectra = dataset
+                        self.spectra = dataset  # load spectra data from .emd file
 
-                self.feature_list = self.edx.metadata.Sample.xray_lines
+                self.spectra.change_dtype("float32")  
+                self.spectra_raw = self.spectra.deepcopy()
+
+                elements = self.spectra.metadata.Sample.elements
+                self.spectra.metadata.set_item("Sample.xray_lines", [e+'_Ka' for e in elements])
+                self.feature_list = self.spectra.metadata.Sample.xray_lines
                 self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}
 
     def set_xray_lines(self, xray_lines: List[str]):
         """
-        Set the X-ray lines for the edx analysis. 
+        Set the X-ray lines for the spectra analysis. 
 
         Parameters
         ----------
@@ -62,7 +58,7 @@ class TEMDataset(SEMDataset):
 
         """
         self.feature_list = xray_lines
-        self.edx.set_lines(self.feature_list)
+        self.spectra.set_lines(self.feature_list)
         self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}
         print(f"Set xray_lines to {self.feature_list}")
 
@@ -76,7 +72,7 @@ class TEMDataset(SEMDataset):
             The scale of the energy axis. For example, given a data set with 1500 data points corresponding to 0-15 keV, the scale should be set to 0.01.
 
         """
-        self.edx.axes_manager["Energy"].scale = scale
+        self.spectra.axes_manager["Energy"].scale = scale
     
     def set_axes_offset(self, offset:float):
         """
@@ -88,7 +84,7 @@ class TEMDataset(SEMDataset):
             the offset of the energy axis. 
 
         """
-        self.edx.axes_manager["Energy"].offset = offset
+        self.spectra.axes_manager["Energy"].offset = offset
 
     def set_axes_unit(self, unit:str):
         """
@@ -100,17 +96,17 @@ class TEMDataset(SEMDataset):
             the unit of the energy axis. 
 
         """
-        self.edx.axes_manager["Energy"].unit = unit
+        self.spectra.axes_manager["Energy"].unit = unit
     
     def remove_NaN(self):
         """
         Remove the pixels where no values are stored.
         """
-        index_NaN = np.argwhere(np.isnan(self.edx.data[:,0,0]))[0][0]
-        self.bse.data = self.bse.data[:index_NaN-1,:]
-        self.edx.data = self.edx.data[:index_NaN-1,:,:]
+        index_NaN = np.argwhere(np.isnan(self.spectra.data[:,0,0]))[0][0]
+        self.nav_img.data = self.nav_img.data[:index_NaN-1,:]
+        self.spectra.data = self.spectra.data[:index_NaN-1,:,:]
 
-        if self.bse_bin is not None:
-            self.bse_bin.data = self.bse_bin.data[:index_NaN-1,:]
-        if self.edx_bin is not None:
-            self.edx_bin.data = self.edx_bin.data[:index_NaN-1,:,:]
+        if self.nav_img_bin is not None:
+            self.nav_img_bin.data = self.nav_img_bin.data[:index_NaN-1,:]
+        if self.spectra_bin is not None:
+            self.spectra_bin.data = self.spectra_bin.data[:index_NaN-1,:,:]

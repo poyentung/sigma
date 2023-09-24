@@ -45,17 +45,17 @@ def make_colormap(seq):
     return mcolors.LinearSegmentedColormap("CustomMap", cdict)
 
 
-def plot_sum_spectrum(edx, xray_lines=True):
-    size = edx.axes_manager[2].size
-    scale = edx.axes_manager[2].scale
-    offset = edx.axes_manager[2].offset
+def plot_sum_spectrum(spectra, xray_lines=True):
+    size = spectra.axes_manager[2].size
+    scale = spectra.axes_manager[2].scale
+    offset = spectra.axes_manager[2].offset
     energy_axis = [((a * scale) + offset) for a in range(0, size)]
 
     fig = go.Figure(
-        data=go.Scatter(x=energy_axis, y=edx.sum().data),
+        data=go.Scatter(x=energy_axis, y=spectra.sum().data),
         layout_xaxis_range=[offset, 10],
         layout=go.Layout(
-            title="EDX Sum Spectrum",
+            title="Sum Spectrum",
             title_x=0.5,
             xaxis_title="Energy / keV",
             yaxis_title="Counts",
@@ -65,13 +65,13 @@ def plot_sum_spectrum(edx, xray_lines=True):
     )
 
     if xray_lines:
-        feature_list = edx.metadata.Sample.xray_lines
+        feature_list = spectra.metadata.Sample.xray_lines
         if np.array(energy_axis).min() <= 0:
             zero_energy_idx = np.where(np.array(energy_axis).round(2) == 0)[0][0]
         else:
             zero_energy_idx = 0
         for el in feature_list:
-            peak = edx.sum().data[zero_energy_idx:][int(peak_dict[el] * 100) + 1]
+            peak = spectra.sum().data[zero_energy_idx:][int(peak_dict[el] * 100) + 1]
             fig.add_shape(
                 type="line",
                 x0=peak_dict[el],
@@ -96,7 +96,7 @@ def plot_sum_spectrum(edx, xray_lines=True):
     fig.show()
 
 
-def plot_intensity_maps(edx, element_list, colors=[], save=None):
+def plot_intensity_maps(spectra, element_list, colors=[], save=None):
     feature_dict = {el: i for (i, el) in enumerate(element_list)}
     num_peak = len(element_list)
     if num_peak > 4:
@@ -145,10 +145,10 @@ def plot_intensity_maps(edx, element_list, colors=[], save=None):
                     axs_sub = axs[j]
 
                 el = element_list[cur_peak]
-                if (type(edx) is EDSSEMSpectrum) or (type(edx) is EDSTEMSpectrum):
-                    el_map = edx.get_lines_intensity([el])[0].data
+                if (type(spectra) is EDSSEMSpectrum) or (type(spectra) is EDSTEMSpectrum):
+                    el_map = spectra.get_lines_intensity([el])[0].data
                 else:
-                    el_map = edx[:, :, feature_dict[el]]
+                    el_map = spectra[:, :, feature_dict[el]]
 
                 if type(colors) == str:
                     c = colors

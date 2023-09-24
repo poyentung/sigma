@@ -1,10 +1,14 @@
 __pycache__/
+
 .ipynb_checkpoints/
 .spyproject/config/
 .ipynb
 tutorial_stem_edx.ipynb
 tutorial_stem_image.ipynb
 tutorial/EDX3.bcf
+tutorial/test_data/
+*.emd
+tutorial/map01_15kV_30um_ss4_13mm_13min.bcf
 
 # Compiled source #
 ###################

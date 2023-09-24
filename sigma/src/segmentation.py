@@ -10,10 +10,10 @@ from typing import List, Dict, Union
 import hyperspy.api as hs
 import numpy as np
 import pandas as pd
-import hdbscan
+# import hdbscan
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 from sklearn.decomposition import NMF
-from sklearn.cluster import KMeans, Birch
+from sklearn.cluster import KMeans, Birch, HDBSCAN
 from skimage import measure
 from scipy import fftpack
 from skimage.transform import resize
@@ -44,22 +44,22 @@ class PixelSegmenter(object):
         self.height = self.dataset_norm.shape[0]
         self.width = self.dataset_norm.shape[1]
 
-        # Set edx and bse signal to the corresponding ones
+        # Set spectra and nav_img signal to the corresponding ones
         if type(dataset) != IMAGEDataset:
-            if self.dataset.edx_bin is not None:
-                self.edx = self.dataset.edx_bin
+            if self.dataset.spectra_bin is not None:
+                self.spectra = self.dataset.spectra_bin
             else:
-                self.edx = self.dataset.edx
+                self.spectra = self.dataset.spectra
 
-            if self.dataset.bse_bin is not None:
-                self.bse = self.dataset.bse_bin
+            if self.dataset.nav_img_bin is not None:
+                self.nav_img = self.dataset.nav_img_bin
             else:
-                self.bse = self.dataset.bse
+                self.nav_img = self.dataset.nav_img
 
             ### Get energy_axis ###
-            size = self.edx.axes_manager[2].size
-            scale = self.edx.axes_manager[2].scale
-            offset = self.edx.axes_manager[2].offset
+            size = self.spectra.axes_manager[2].size
+            scale = self.spectra.axes_manager[2].scale
+            offset = self.spectra.axes_manager[2].offset
             self.energy_axis = [((a * scale) + offset) for a in range(0, size)]
 
         ### Train the model ###
@@ -76,13 +76,13 @@ class PixelSegmenter(object):
             self.model = Birch(**method_args).partial_fit(self.latent)
             self.n_components = self.method_args["n_clusters"]
         elif self.method == "HDBSCAN":
-            self.model = hdbscan.HDBSCAN(**method_args)
-            self.labels = self.model.fit_predict(latent)
+            self.model = HDBSCAN(**method_args)
+            self.labels = self.model.fit_predict(self.latent)
             self.n_components = int(self.labels.max()) + 1 
-
+            
         if self.method != "HDBSCAN":
             self.labels = self.model.predict(self.latent)
-
+            
         ### calculate cluster probability maps ###
         means = []
         dataset_ravel = self.dataset_norm.reshape(-1, self.dataset_norm.shape[2])
@@ -92,8 +92,9 @@ class PixelSegmenter(object):
         mu = np.concatenate(means, axis=0)
 
         if self.method in ["GaussianMixture", "BayesianGaussianMixture"]:
-            prob_map = self.model.predict_proba(self.latent)
-            self.prob_map = prob_map
+            self.prob_map = self.model.predict_proba(self.latent)
+        elif self.method == "HDBSCAN":
+            self.prob_map = self.model.probabilities_
 
         self.mu = mu
 
@@ -166,7 +167,7 @@ class PixelSegmenter(object):
     # Data Analysis #--------------------------------------------------------------
     #################
 
-    def get_binary_map_edx_profile(
+    def get_binary_map_spectra_profile(
         self,
         cluster_num=1,
         use_label=False,
@@ -229,56 +230,56 @@ class PixelSegmenter(object):
                 self.labels.reshape(self.height, self.width) == cluster_num
             )
 
-        # Get edx profile in the filtered phase region
+        # Get spectral profile in the filtered phase region
         x_id = binary_map_indices[0].reshape(-1, 1)
         y_id = binary_map_indices[1].reshape(-1, 1)
         x_y = np.concatenate([x_id, y_id], axis=1)
         x_y_indices = tuple(map(tuple, x_y))
 
         if type(self.dataset) != IMAGEDataset:
-            total_edx_profiles = list()
+            total_spectra_profiles = list()
             for x_y_index in x_y_indices:
-                total_edx_profiles.append(self.edx.data[x_y_index].reshape(1, -1))
-            total_edx_profiles = np.concatenate(total_edx_profiles, axis=0)
+                total_spectra_profiles.append(self.spectra.data[x_y_index].reshape(1, -1))
+            total_spectra_profiles = np.concatenate(total_spectra_profiles, axis=0)
 
-            size = self.edx.axes_manager[2].size
-            scale = self.edx.axes_manager[2].scale
-            offset = self.edx.axes_manager[2].offset
+            size = self.spectra.axes_manager[2].size
+            scale = self.spectra.axes_manager[2].scale
+            offset = self.spectra.axes_manager[2].offset
             energy_axis = [((a * scale) + offset) for a in range(0, size)]
 
-            element_intensity_sum = total_edx_profiles.sum(axis=0)
-            edx_profile = pd.DataFrame(
+            element_intensity_sum = total_spectra_profiles.sum(axis=0)
+            spectra_profile = pd.DataFrame(
                 data=np.column_stack([energy_axis, element_intensity_sum]),
                 columns=["energy", "intensity"],
             )
         else:
-            total_edx_profiles = list()
+            total_spectra_profiles = list()
             for x_y_index in x_y_indices:
-                total_edx_profiles.append(self.dataset.chemical_maps[x_y_index].reshape(1, -1))
-            total_edx_profiles = np.concatenate(total_edx_profiles, axis=0)
+                total_spectra_profiles.append(self.dataset.chemical_maps[x_y_index].reshape(1, -1))
+            total_spectra_profiles = np.concatenate(total_spectra_profiles, axis=0)
 
             energy_axis = self.dataset.feature_list
 
-            element_intensity_sum = total_edx_profiles.sum(axis=0)
-            edx_profile = pd.DataFrame(
+            element_intensity_sum = total_spectra_profiles.sum(axis=0)
+            spectra_profile = pd.DataFrame(
                 data=np.column_stack([energy_axis, element_intensity_sum]),
                 columns=["energy", "intensity"],
             )
-        return binary_map, binary_map_indices, edx_profile
+        return binary_map, binary_map_indices, spectra_profile
 
-    def get_all_edx_profile(self, normalised=True):
-        edx_profiles = []
+    def get_all_spectra_profile(self, normalised=True):
+        spectra_profiles = []
         for i in range(self.n_components):
-            _, _, edx_profile = self.get_binary_map_edx_profile(
+            _, _, spectra_profile = self.get_binary_map_spectra_profile(
                 cluster_num=i, use_label=True
             )
-            edx_profiles.append(edx_profile["intensity"])
-        edx_profiles = np.vstack(edx_profiles)
+            spectra_profiles.append(spectra_profile["intensity"])
+        spectra_profiles = np.vstack(spectra_profiles)
         if normalised == True:
-            edx_profiles *= 1 / edx_profiles.max(axis=1, keepdims=True)
-        return edx_profiles
+            spectra_profiles *= 1 / spectra_profiles.max(axis=1, keepdims=True)
+        return spectra_profiles
 
-    def get_unmixed_edx_profile(
+    def get_unmixed_spectra_profile(
         self,
         clusters_to_be_calculated="All",
         n_components="All",
@@ -299,22 +300,22 @@ class PixelSegmenter(object):
         if method == "NMF":
             model = NMF(n_components=n_components, **method_args)
 
-        edx_profiles = self.get_all_edx_profile(normalised)
-        edx_profiles_ = pd.DataFrame(
-            edx_profiles.T, columns=range(edx_profiles.shape[0])
+        spectra_profiles = self.get_all_spectra_profile(normalised)
+        spectra_profiles_ = pd.DataFrame(
+            spectra_profiles.T, columns=range(spectra_profiles.shape[0])
         )
 
         if clusters_to_be_calculated != "All":
-            edx_profiles_ = edx_profiles_[clusters_to_be_calculated]
+            spectra_profiles_ = spectra_profiles_[clusters_to_be_calculated]
 
-        weights = model.fit_transform(edx_profiles_.to_numpy().T)
+        weights = model.fit_transform(spectra_profiles_.to_numpy().T)
         components = model.components_
         self.NMF_recon_error = model.reconstruction_err_
 
         weights = pd.DataFrame(
             weights.round(3),
             columns=[f"w_{component_num}" for component_num in range(n_components)],
-            index=[f"cluster_{cluster_num}" for cluster_num in edx_profiles_],
+            index=[f"cluster_{cluster_num}" for cluster_num in spectra_profiles_],
         )
         components = pd.DataFrame(
             components.T.round(3),
@@ -323,7 +324,7 @@ class PixelSegmenter(object):
 
         return weights, components
 
-    def get_masked_edx(
+    def get_masked_spectra(
         self,
         cluster_num,
         threshold=0.8,
@@ -362,18 +363,18 @@ class PixelSegmenter(object):
 
             binary_map_indices = np.where(image_new > binary_filter_threshold)
 
-        # Get edx profile in the filtered phase region
+        # Get spectra profile in the filtered phase region
         x_id = binary_map_indices[0].reshape(-1, 1)
         y_id = binary_map_indices[1].reshape(-1, 1)
         x_y = np.concatenate([x_id, y_id], axis=1)
         x_y_indices = tuple(map(tuple, x_y))
 
-        shape = self.edx.inav[0, 0].data.shape
-        masked_edx = self.edx.deepcopy()
+        shape = self.spectra.inav[0, 0].data.shape
+        masked_spectra = self.spectra.deepcopy()
         for x_y_index in x_y_indices:
-            masked_edx.data[x_y_index] = np.zeros(shape)
+            masked_spectra.data[x_y_index] = np.zeros(shape)
 
-        return masked_edx
+        return masked_spectra
 
     def phase_statics(
         self, cluster_num, element_peaks=["Fe_Ka", "O_Ka"], binary_filter_args={}
@@ -386,7 +387,7 @@ class PixelSegmenter(object):
             The filtered binary map for analysis.
         element_peaks : dict(), optional
             Determine whether the output includes the elemental intensity from 
-            the origianl edx signal. The default is ['Fe_Ka','O_Ka'].
+            the origianl spectra signal. The default is ['Fe_Ka','O_Ka'].
         binary_filter_args : dict()
             Determine the parameters to generate the binary for the analysis.
 
@@ -402,10 +403,10 @@ class PixelSegmenter(object):
             use_label = True
         else:
             use_label = False
-        binary_map, _, _ = self.get_binary_map_edx_profile(
+        binary_map, _, _ = self.get_binary_map_spectra_profile(
             cluster_num, use_label=use_label, **binary_filter_args
         )
-        pixel_to_um = self.edx.axes_manager[0].scale
+        pixel_to_um = self.spectra.axes_manager[0].scale
         prop_list = [
             "area",
             "equivalent_diameter",
@@ -469,14 +470,14 @@ class PixelSegmenter(object):
                                use_label:bool=True)-> pd.DataFrame:
         
         # get indices of the specified cluster
-        binary_map, binary_map_indices, _ = self.get_binary_map_edx_profile(cluster_num=cluster_num,use_label=use_label)
+        binary_map, binary_map_indices, _ = self.get_binary_map_spectra_profile(cluster_num=cluster_num,use_label=use_label)
         indices = np.column_stack(binary_map_indices)
         indices = tuple(map(tuple, indices))
         
         # set elements for quantification
-        edx_raw = self.dataset.edx_raw
-        edx_raw.metadata.Sample.xray_lines = elements
-        intensities = edx_raw.get_lines_intensity()
+        spectra_raw = self.dataset.spectra_raw
+        spectra_raw.metadata.Sample.xray_lines = elements
+        intensities = spectra_raw.get_lines_intensity()
         
         if k_factors is None:
             try:
@@ -484,7 +485,7 @@ class PixelSegmenter(object):
             except KeyError:
                 print('The k factor is not in the database.')
         
-        compositions = edx_raw.quantification(intensities, method='CL',factors=k_factors,composition_units='atomic')
+        compositions = spectra_raw.quantification(intensities, method='CL',factors=k_factors,composition_units='atomic')
         cluster_element_intensities = [c.data[binary_map.astype(bool)] for c in compositions]
         cluster_element_intensities = np.column_stack(cluster_element_intensities)
         
@@ -574,7 +575,7 @@ class PixelSegmenter(object):
         # Draw the Ellipse
         for nsig in range(1, 3):
             ax.add_patch(
-                Ellipse(position, nsig * width, nsig * height, angle, **kwargs)
+                Ellipse(position, width=nsig*width, height=nsig*height, angle=angle, **kwargs)
             )
 
     def plot_cluster_distribution(self, save=None, **kwargs):
@@ -585,9 +586,6 @@ class PixelSegmenter(object):
             mean = dataset_ravel[np.where(labels == i)[0]].mean(axis=0)
             means.append(mean.reshape(1, -1))
         mu = np.concatenate(means, axis=0)
-
-        if self.method in ["GaussianMixture", "BayesianGaussianMixture"]:
-            prob_map = self.model.predict_proba(self.latent)
 
         fig, axs = plt.subplots(
             self.n_components,
@@ -604,7 +602,7 @@ class PixelSegmenter(object):
 
         for i in range(self.n_components):
             if self.method in ["GaussianMixture", "BayesianGaussianMixture"]:
-                prob_map_i = prob_map[:, i]
+                prob_map_i = self.prob_map[:, i]
             else:
                 prob_map_i = np.where(labels == i, 1, 0)
             im = axs[i, 0].imshow(
@@ -658,6 +656,8 @@ class PixelSegmenter(object):
             prob_map_i = self.prob_map[:, cluster_num]
         else:
             prob_map_i = np.where(self.labels == cluster_num, 1, 0)
+            if self.method == "HDBSCAN":
+                prob_map_i = prob_map_i*self.prob_map
         im = axs[0].imshow(prob_map_i.reshape(self.height, self.width), cmap="viridis")
         axs[0].set_title("Pixel-wise probability for cluster " + str(cluster_num))
 
@@ -688,19 +688,19 @@ class PixelSegmenter(object):
 
         if type(self.dataset)!=IMAGEDataset:
 
-            sum_spectrum = self.dataset.edx_bin if self.dataset.edx_bin else self.dataset.edx
+            sum_spectrum = self.dataset.spectra_bin if self.dataset.spectra_bin else self.dataset.spectra
             intensity_sum = sum_spectrum.sum().data / sum_spectrum.sum().data.max()
 
             try:
-                edx_profile = self.get_binary_map_edx_profile(cluster_num)[2]
+                spectra_profile = self.get_binary_map_spectra_profile(cluster_num)[2]
             except ValueError:
                 print(f'warning: no pixel is assigned to cpnt_{cluster_num}')
                 return
             
-            intensity = edx_profile["intensity"].to_numpy() / edx_profile["intensity"].max()
+            intensity = spectra_profile["intensity"].to_numpy() / spectra_profile["intensity"].max()
 
             axs[2].plot(
-                edx_profile["energy"],
+                spectra_profile["energy"],
                 intensity_sum,
                 alpha=1,
                 linewidth=0.7,
@@ -711,14 +711,14 @@ class PixelSegmenter(object):
 
             if self.n_components <= 10:
                 axs[2].plot(
-                    edx_profile["energy"],
+                    spectra_profile["energy"],
                     intensity,
                     linewidth=1,
                     color=plt.cm.get_cmap(self.color_palette)(cluster_num * 0.1),
                 )
             else:
                 axs[2].plot(
-                    edx_profile["energy"],
+                    spectra_profile["energy"],
                     intensity,
                     linewidth=1,
                     color=plt.cm.get_cmap(self.color_palette)(
@@ -742,8 +742,8 @@ class PixelSegmenter(object):
                 loc="upper right", handletextpad=0.5, frameon=False, prop=legend_properties
             )
 
-            if np.array(edx_profile["energy"]).min() <= 0:
-                zero_energy_idx = np.where(np.array(edx_profile["energy"]).round(2) == 0)[
+            if np.array(spectra_profile["energy"]).min() <= 0:
+                zero_energy_idx = np.where(np.array(spectra_profile["energy"]).round(2) == 0)[
                     0
                 ][0]
             else:
@@ -776,10 +776,10 @@ class PixelSegmenter(object):
         plt.show()
         return fig
 
-    def plot_phase_map(self, cmap=None):
+    def plot_phase_map(self, cmap=None, alpha_cluster_map=0.75):
         cmap = self.color_palette if cmap is None else cmap
         if type(self.dataset)!=IMAGEDataset:
-            img = self.bse.data 
+            img = self.nav_img.data 
         else:
             img = resize(self.dataset.intensity_map, self.dataset.chemical_maps.shape[:2])
 
@@ -788,10 +788,7 @@ class PixelSegmenter(object):
         fig, axs = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(8, 4), dpi=100)
 
         axs[0].imshow(img, cmap="gray", interpolation="none")
-        if type(self.dataset)==SEMDataset:
-            axs[0].set_title("BSE")
-        else:
-            axs[0].set_title("Intensity")
+        axs[0].set_title("Navigation Signal")
 
         axs[0].axis("off")
 
@@ -803,14 +800,14 @@ class PixelSegmenter(object):
                 cmap=self.color_palette,
                 interpolation="none",
                 norm=self.color_norm,
-                alpha=0.75,
+                alpha=alpha_cluster_map,
             )
         else:
             axs[1].imshow(
                 phase,
                 cmap=self.color_palette,
                 interpolation="none",
-                alpha=0.6,
+                alpha=alpha_cluster_map,
                 norm=self.color_norm,
             )
         axs[1].axis("off")
@@ -820,11 +817,11 @@ class PixelSegmenter(object):
         plt.show()
         return fig
 
-    def plot_binary_map_edx_profile(
+    def plot_binary_map_spectra_profile(
         self, cluster_num, normalisation=True, spectra_range=(0, 8), **kwargs
     ):
 
-        binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(
+        binary_map, binary_map_indices, spectra_profile = self.get_binary_map_spectra_profile(
             cluster_num, use_label=False
         )
 
@@ -858,41 +855,38 @@ class PixelSegmenter(object):
         axs[0].set_aspect("equal", "box")
 
         if type(self.dataset)!=IMAGEDataset:
-            bse = self.dataset.bse_bin.data if self.dataset.bse_bin else self.dataset.bse.data
+            nav_img = self.dataset.nav_img_bin.data if self.dataset.nav_img_bin else self.dataset.nav_img.data
         else:
             if self.dataset.intensity_map.shape[:2]!= self.dataset.chemical_maps.shape[:2]: # if size of intensity map is different from chemical maps
-                bse = resize(self.dataset.intensity_map, self.dataset.chemical_maps.shape[:2]) 
+                nav_img = resize(self.dataset.intensity_map, self.dataset.chemical_maps.shape[:2]) 
             else:
-                bse = self.dataset.intensity_map
-        axs[1].imshow(bse, cmap="gray", interpolation="none", alpha=0.9)
+                nav_img = self.dataset.intensity_map
+        axs[1].imshow(nav_img, cmap="gray", interpolation="none", alpha=0.9)
         axs[1].scatter(
             binary_map_indices[1], binary_map_indices[0], c="r", alpha=0.2, s=1.5
         )
         axs[1].grid(False)
         axs[1].axis("off")
-        if type(self.dataset)==SEMDataset:
-            axs[1].set_title("BSE + Binary Map", fontsize=10)
-        else:
-            axs[1].set_title("Intensity + Binary Map", fontsize=10)
+        axs[1].set_title("Navigation Sigmal + Binary Map", fontsize=10)
 
         if type(self.dataset)!=IMAGEDataset:
             if normalisation:
                 intensity = (
-                    edx_profile["intensity"].to_numpy() / edx_profile["intensity"].max()
+                    spectra_profile["intensity"].to_numpy() / spectra_profile["intensity"].max()
                 )
             else:
-                intensity = edx_profile["intensity"].to_numpy()
+                intensity = spectra_profile["intensity"].to_numpy()
 
             if self.n_components <= 10:
                 axs[2].plot(
-                    edx_profile["energy"],
+                    spectra_profile["energy"],
                     intensity,
                     linewidth=1,
                     color=plt.cm.get_cmap(self.color_palette)(cluster_num * 0.1),
                 )
             else:
                 axs[2].plot(
-                    edx_profile["energy"],
+                    spectra_profile["energy"],
                     intensity,
                     linewidth=1,
                     color=plt.cm.get_cmap(self.color_palette)(
@@ -900,8 +894,8 @@ class PixelSegmenter(object):
                     ),
                 )
 
-            if np.array(edx_profile["energy"]).min() <= 0.0:
-                zero_energy_idx = np.where(np.array(edx_profile["energy"]).round(2) == 0)[
+            if np.array(spectra_profile["energy"]).min() <= 0.0:
+                zero_energy_idx = np.where(np.array(spectra_profile["energy"]).round(2) == 0)[
                     0
                 ][0]
             else:
@@ -975,7 +969,7 @@ class PixelSegmenter(object):
         **kwargs,
     ):
 
-        binary_map, binary_map_indices, edx_profile = self.get_binary_map_edx_profile(
+        binary_map, binary_map_indices, spectra_profile = self.get_binary_map_spectra_profile(
             cluster_num, **binary_filter_args
         )
 
@@ -986,13 +980,13 @@ class PixelSegmenter(object):
         axs[0].axis("off")
         axs[0].set_aspect("equal", "box")
 
-        axs[1].imshow(self.dataset.bse_bin.data, cmap="gray", interpolation="none", alpha=1)
+        axs[1].imshow(self.dataset.nav_img_bin.data, cmap="gray", interpolation="none", alpha=1)
         axs[1].scatter(
             binary_map_indices[1], binary_map_indices[0], c="r", alpha=0.05, s=1.2
         )
         axs[1].grid(False)
         axs[1].axis("off")
-        axs[1].set_title(f"BSE + Phase Map (cluster {cluster_num})")
+        axs[1].set_title(f"Naviation Signal + Phase Map (cluster {cluster_num})")
 
         # fig.subplots_adjust(left=0.1)
         plt.tight_layout()
@@ -1066,11 +1060,11 @@ class PixelSegmenter(object):
         plt.show()
         return fig
 
-    def plot_edx_profile(self, cluster_num, peak_list, binary_filter_args):
-        edx_profile = self.get_binary_map_edx_profile(
+    def plot_spectra_profile(self, cluster_num, peak_list, binary_filter_args):
+        spectra_profile = self.get_binary_map_spectra_profile(
             cluster_num, **binary_filter_args
         )[2]
-        intensity = edx_profile["intensity"].to_numpy()
+        intensity = spectra_profile["intensity"].to_numpy()
 
         fig, axs = plt.subplots(1, 1, figsize=(4, 2), dpi=150)
         axs.set_xticks(np.arange(0, 12, step=1))
@@ -1091,22 +1085,22 @@ class PixelSegmenter(object):
 
         if self.n_components <= 10:
             axs.plot(
-                edx_profile["energy"],
-                edx_profile["intensity"],
+                spectra_profile["energy"],
+                spectra_profile["intensity"],
                 linewidth=1,
                 color=plt.cm.get_cmap(self.color_palette)(cluster_num * 0.1),
             )
         else:
             axs.plot(
-                edx_profile["energy"],
-                edx_profile["intensity"],
+                spectra_profile["energy"],
+                spectra_profile["intensity"],
                 linewidth=1,
                 color=plt.cm.get_cmap(self.color_palette)(
                     cluster_num * (self.n_components - 1) ** -1
                 ),
             )
 
-        zero_energy_idx = np.where(np.array(edx_profile["energy"]).round(2) == 0)[0][0]
+        zero_energy_idx = np.where(np.array(spectra_profile["energy"]).round(2) == 0)[0][0]
         for el in peak_list:
             peak = intensity[zero_energy_idx:][int(self.peak_dict[el] * 100) + 1]
             axs.vlines(

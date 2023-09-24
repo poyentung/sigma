@@ -205,41 +205,41 @@ def pick_color(plot_func, *args, **kwargs):
     display(final_box)
 
 
-def view_bcf_dataset(dataset:SEMDataset, search_energy=True):
+def view_dataset(dataset:SEMDataset, search_energy=True):
     if search_energy == True:
         search_energy_peak()
 
-    bse_out = widgets.Output()
-    with bse_out:
-        dataset.bse.plot(colorbar=False)
+    nav_img_out = widgets.Output()
+    with nav_img_out:
+        dataset.nav_img.plot(colorbar=False)
         plt.show()
         fig, axs = plt.subplots(1, 1)
-        axs.imshow(dataset.bse.data, cmap="gray")
+        axs.imshow(dataset.nav_img.data, cmap="gray")
         axs.axis("off")
         save_fig(fig)
         plt.close()
 
     sum_spec_out = widgets.Output()
     with sum_spec_out:
-        visual.plot_sum_spectrum(dataset.edx)
+        visual.plot_sum_spectrum(dataset.spectra)
 
     elemental_map_out = widgets.Output()
     with elemental_map_out:
         pick_color(
-            visual.plot_intensity_maps, edx=dataset.edx, element_list=dataset.feature_list
+            visual.plot_intensity_maps, spectra=dataset.spectra, element_list=dataset.feature_list
         )
-        # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+        # fig = visual.plot_intensity_maps(sem.spectra, sem.feature_list)
         # save_fig(fig)
 
-    if dataset.edx_bin is not None:
+    if dataset.spectra_bin is not None:
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
             pick_color(
                 visual.plot_intensity_maps,
-                edx=dataset.edx_bin,
+                spectra=dataset.spectra_bin,
                 element_list=dataset.feature_list,
             )
-            # fig = visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.spectra_bin, sem.feature_list)
             # save_fig(fig)
 
     default_elements = ""
@@ -273,32 +273,32 @@ def view_bcf_dataset(dataset:SEMDataset, search_energy=True):
 
         sum_spec_out.clear_output()
         with sum_spec_out:
-            visual.plot_sum_spectrum(dataset.edx)
+            visual.plot_sum_spectrum(dataset.spectra)
 
         elemental_map_out.clear_output()
         with elemental_map_out:
-            visual.plot_intensity_maps(dataset.edx, dataset.feature_list)
+            visual.plot_intensity_maps(dataset.spectra, dataset.feature_list)
 
-        if dataset.edx_bin is not None:
+        if dataset.spectra_bin is not None:
             elemental_map_out_bin.clear_output()
             with elemental_map_out_bin:
-                visual.plot_intensity_maps(dataset.edx_bin, dataset.feature_list)
+                visual.plot_intensity_maps(dataset.spectra_bin, dataset.feature_list)
 
     button.on_click(set_to)
     all_widgets = widgets.HBox([text, button])
     display(all_widgets)
     display(out)
 
-    tab_list = [bse_out, sum_spec_out, elemental_map_out]
-    if dataset.edx_bin is not None:
+    tab_list = [nav_img_out, sum_spec_out, elemental_map_out]
+    if dataset.spectra_bin is not None:
         tab_list += [elemental_map_out_bin]
 
     tab = widgets.Tab(tab_list)
-    tab.set_title(0, "BSE image")
-    tab.set_title(1, "EDX sum spectrum")
+    tab.set_title(0, "Navigation Signal")
+    tab.set_title(1, "Sum spectrum")
     tab.set_title(2, "Elemental maps (raw)")
     i = 2
-    if dataset.edx_bin is not None:
+    if dataset.spectra_bin is not None:
         tab.set_title(i + 1, "Elemental maps (binned)")
     display(tab)
 
@@ -315,10 +315,10 @@ def view_im_dataset(im):
     with elemental_map_out:
         pick_color(
             visual.plot_intensity_maps, 
-            edx=im.chemical_maps, 
+            spectra=im.chemical_maps, 
             element_list=im.feature_list
         )
-        # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+        # fig = visual.plot_intensity_maps(sem.spectra, sem.feature_list)
         # save_fig(fig)
 
     default_elements = ""
@@ -372,12 +372,24 @@ def view_rgb(dataset:Union[SEMDataset,TEMDataset,IMAGEDataset]):
     option_dict = {}
     if isinstance(dataset.normalised_elemental_data, np.ndarray):
         option_dict["normalised"] = dataset.normalised_elemental_data
+        option_dict["normalised"]/= option_dict["normalised"].max(keepdims=True, axis=(0,1))
 
     if type(dataset) != IMAGEDataset:
-        option_dict["binned"] = dataset.edx_bin.data
-        option_dict["raw"] = dataset.edx.data
+        option_dict["binned"] = dataset.get_feature_maps()
+        option_dict["binned"] = option_dict["binned"].clip(None, np.percentile(option_dict["binned"], 99, axis=(0,1), keepdims=True))
+        option_dict["binned"] /= option_dict["binned"].max(keepdims=True, axis=(0,1))
+        
+        option_dict["raw"] = dataset.get_feature_maps(raw_data=True)
+        option_dict["raw"] = option_dict["raw"].clip(None, np.percentile(option_dict["raw"], 99, axis=(0,1), keepdims=True))
+        option_dict["raw"] /= option_dict["raw"].max(keepdims=True, axis=(0,1))
     else:
         option_dict["raw"] = dataset.chemical_maps
+        option_dict["raw"] = option_dict["raw"].clip(None, np.percentile(option_dict["raw"], 99, axis=(0,1), keepdims=True))
+        option_dict["raw"] /= option_dict["raw"].max(keepdims=True, axis=(0,1))
+        if dataset.chemical_maps_bin is not None:
+            option_dict["binned"] = dataset.chemical_maps_bin
+            option_dict["binned"] = option_dict["binned"].clip(None, np.percentile(option_dict["binned"], 99, axis=(0,1), keepdims=True))
+            option_dict["binned"] /= option_dict["binned"].max(keepdims=True, axis=(0,1))
 
     dropdown_option = widgets.Dropdown(
         options=list(option_dict.keys()), description="Data:"
@@ -466,8 +478,8 @@ def view_pixel_distributions(dataset:Union[SEMDataset, TEMDataset, IMAGEDataset]
     display(out_box)
 
 
-def view_intensity_maps(edx, element_list):
-    pick_color(visual.plot_intensity_maps, edx=edx, element_list=element_list)
+def view_intensity_maps(spectra, element_list):
+    pick_color(visual.plot_intensity_maps, spectra=spectra, element_list=element_list)
 
 
 def view_bic(
@@ -606,7 +618,7 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
     y_id = y_id.ravel().reshape(-1, 1)
 
     if type(ps.dataset) != IMAGEDataset:
-        z_id = (ps.bse.data / ps.bse.data.max()).reshape(-1, 1)
+        z_id = (ps.nav_img.data / ps.nav_img.data.max()).reshape(-1, 1)
     else:
         intensity_map = resize(ps.dataset.intensity_map, ps.dataset.chemical_maps.shape[:2])
         z_id = (intensity_map / intensity_map.max()).reshape(-1, 1)
@@ -658,7 +670,7 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
             color=alt.Color(
                 "Cluster_id:N", scale=alt.Scale(domain=domain, range=range_)
             ),
-            opacity=alt.condition(brush, alt.value(0.9), alt.value(0.25)),
+            opacity=alt.condition(brush, alt.value(0.9), alt.value(0.1)),
             tooltip=[
                 "Cluster_id:N",
                 alt.Tooltip("x:Q", format=",.2f"),
@@ -689,17 +701,17 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
 
     # Heatmap
     if show_map == True:
-        bse_df = pd.DataFrame(
-            {"x_bse": x_id.ravel(), "y_bse": y_id.ravel(), "z_bse": z_id.ravel()}
+        nav_img_df = pd.DataFrame(
+            {"x_nav_img": x_id.ravel(), "y_nav_img": y_id.ravel(), "z_nav_img": z_id.ravel()}
         )
-        bse = (
-            alt.Chart(bse_df)
+        nav_img = (
+            alt.Chart(nav_img_df)
             .mark_square(size=6)
             .encode(
-                x=alt.X("x_bse:O", axis=None),
-                y=alt.Y("y_bse:O", axis=None),
+                x=alt.X("x_nav_img:O", axis=None),
+                y=alt.Y("y_nav_img:O", axis=None),
                 color=alt.Color(
-                    "z_bse:Q", scale=alt.Scale(scheme="greys", domain=[1.0, 0.0])
+                    "z_nav_img:Q", scale=alt.Scale(scheme="greys", domain=[1.0, 0.0])
                 ),
             )
             .properties(width=ps.width*2, height=ps.height*2)
@@ -718,9 +730,9 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
             .properties(width=ps.width*2, height=ps.height*2)
             .add_selection(brush)
         )
-        heatmap_bse = bse + heatmap
+        heatmap_nav_img = nav_img + heatmap
 
-    final_widgets = [points, heatmap_bse, text] if show_map == True else [points, text]
+    final_widgets = [points, heatmap_nav_img, text] if show_map == True else [points, text]
 
     # Build chart
     chart = (
@@ -761,7 +773,7 @@ def show_cluster_distribution(ps: PixelSegmenter, **kwargs):
     display(plots_output)
 
 
-def view_phase_map(ps):
+def view_phase_map(ps, alpha_cluster_map=0.6):
     colors = []
     cmap = plt.get_cmap(ps.color_palette)
     for i in range(ps.n_components):
@@ -779,7 +791,7 @@ def view_phase_map(ps):
     newcmp = mpl.colors.ListedColormap(colors, name="new_cmap")
     out = widgets.Output()
     with out:
-        fig = ps.plot_phase_map(cmap=None)
+        fig = ps.plot_phase_map(cmap=None, alpha_cluster_map=alpha_cluster_map)
         plt.show()
         save_fig(fig)
 
@@ -942,7 +954,7 @@ def view_clusters_sum_spectra(
     figs = []
     with plots_output:
         for cluster in cluster_options:
-            fig = ps.plot_binary_map_edx_profile(
+            fig = ps.plot_binary_map_spectra_profile(
                 cluster_num=int(cluster.split("_")[1]),
                 normalisation=normalisation,
                 spectra_range=spectra_range,
@@ -955,7 +967,7 @@ def view_clusters_sum_spectra(
 
         with plots_output:
             for cluster in change.new:
-                fig = ps.plot_binary_map_edx_profile(
+                fig = ps.plot_binary_map_spectra_profile(
                     cluster_num=int(cluster.split("_")[1]),
                     normalisation=normalisation,
                     spectra_range=spectra_range,
@@ -964,11 +976,11 @@ def view_clusters_sum_spectra(
         with profile_output:
             ### X-ray profile ###
             for cluster in change.new:
-                _, _, edx_profile = ps.get_binary_map_edx_profile(
+                _, _, spectra_profile = ps.get_binary_map_spectra_profile(
                     cluster_num=int(cluster.split("_")[1]), use_label=True
                 )
                 visual.plot_profile(
-                    edx_profile["energy"], edx_profile["intensity"], ps.peak_list
+                    spectra_profile["energy"], spectra_profile["intensity"], ps.peak_list
                 )
 
     multi_select.observe(eventhandler, names="value")
@@ -976,8 +988,8 @@ def view_clusters_sum_spectra(
     display(multi_select)
     save_fig(figs)
     tab = widgets.Tab([plots_output, profile_output])
-    tab.set_title(0, "clusters + edx")
-    tab.set_title(1, "edx")
+    tab.set_title(0, "clusters + spectra")
+    tab.set_title(1, "spectra")
     display(tab)
 
 
@@ -1071,38 +1083,38 @@ def view_emi_dataset(tem, search_energy=True):
     if search_energy == True:
         search_energy_peak()
 
-    bse_out = widgets.Output()
-    with bse_out:
-        tem.bse.plot(colorbar=False)
+    nav_img_out = widgets.Output()
+    with nav_img_out:
+        tem.nav_img.plot(colorbar=False)
         plt.show()
         fig, axs = plt.subplots(1, 1)
-        axs.imshow(tem.bse.data, cmap="gray")
+        axs.imshow(tem.nav_img.data, cmap="gray")
         axs.axis("off")
         save_fig(fig)
         plt.close()
 
     sum_spec_out = widgets.Output()
     with sum_spec_out:
-        visual.plot_sum_spectrum(tem.edx)
+        visual.plot_sum_spectrum(tem.spectra)
 
     elemental_map_out = widgets.Output()
     with elemental_map_out:
         if len(tem.feature_list) != 0:
             pick_color(
-                visual.plot_intensity_maps, edx=tem.edx, element_list=tem.feature_list
+                visual.plot_intensity_maps, spectra=tem.spectra, element_list=tem.feature_list
             )
-            # fig = visual.plot_intensity_maps(sem.edx, sem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.spectra, sem.feature_list)
             # save_fig(fig)
 
-    if tem.edx_bin is not None:
+    if tem.spectra_bin is not None:
         elemental_map_out_bin = widgets.Output()
         with elemental_map_out_bin:
             pick_color(
                 visual.plot_intensity_maps,
-                edx=tem.edx_bin,
+                spectra=tem.spectra_bin,
                 element_list=tem.feature_list,
             )
-            # fig = visual.plot_intensity_maps(sem.edx_bin, sem.feature_list)
+            # fig = visual.plot_intensity_maps(sem.spectra_bin, sem.feature_list)
             # save_fig(fig)
 
     default_elements = ""
@@ -1136,45 +1148,45 @@ def view_emi_dataset(tem, search_energy=True):
 
         sum_spec_out.clear_output()
         with sum_spec_out:
-            visual.plot_sum_spectrum(tem.edx)
+            visual.plot_sum_spectrum(tem.spectra)
 
         if len(tem.feature_list) != 0:
             elemental_map_out.clear_output()
             with elemental_map_out:
                 pick_color(
                     visual.plot_intensity_maps,
-                    edx=tem.edx,
+                    spectra=tem.spectra,
                     element_list=tem.feature_list,
                 )
-                visual.plot_intensity_maps(tem.edx, tem.feature_list)
+                visual.plot_intensity_maps(tem.spectra, tem.feature_list)
 
-        if tem.edx_bin is not None:
+        if tem.spectra_bin is not None:
             elemental_map_out_bin.clear_output()
             with elemental_map_out_bin:
-                visual.plot_intensity_maps(tem.edx_bin, tem.feature_list)
+                visual.plot_intensity_maps(tem.spectra_bin, tem.feature_list)
 
     button.on_click(set_to)
     all_widgets = widgets.HBox([text, button])
     display(all_widgets)
     display(out)
 
-    tab_list = [bse_out, sum_spec_out, elemental_map_out]
-    if tem.edx_bin is not None:
+    tab_list = [nav_img_out, sum_spec_out, elemental_map_out]
+    if tem.spectra_bin is not None:
         tab_list += [elemental_map_out_bin]
 
     tab = widgets.Tab(tab_list)
-    tab.set_title(0, "EDX sum intensity map")
-    tab.set_title(1, "EDX sum spectrum")
+    tab.set_title(0, "Sum intensity map")
+    tab.set_title(1, "Sum spectrum")
     tab.set_title(2, "Elemental maps (raw)")
     i = 2
-    if tem.edx_bin is not None:
+    if tem.spectra_bin is not None:
         tab.set_title(i + 1, "Elemental maps (binned)")
     display(tab)
 
 
 def show_abundance_map(ps:PixelSegmenter, weights:pd.DataFrame, components: pd.DataFrame):
     def plot_rgb(ps, phases:List):
-        shape = ps.get_binary_map_edx_profile(0)[0].shape
+        shape = ps.get_binary_map_spectra_profile(0)[0].shape
         img = np.zeros((shape[0], shape[1], 3))
         
         # make abundance map
@@ -1184,7 +1196,7 @@ def show_abundance_map(ps:PixelSegmenter, weights:pd.DataFrame, components: pd.D
                 tmp = np.zeros(shape)
                 for j in range(ps.n_components):
                     try:
-                        idx = ps.get_binary_map_edx_profile(j)[1]
+                        idx = ps.get_binary_map_spectra_profile(j)[1]
                         tmp[idx] = cpnt_weights[j]
                     except ValueError:
                         pass
