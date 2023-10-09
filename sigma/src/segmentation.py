@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from sigma.utils.load import SEMDataset, IMAGEDataset
+from sigma.utils.load import SEMDataset, IMAGEDataset, PIXLDataset
 from sigma.utils.loadtem import TEMDataset
 from sigma.utils.visualisation import make_colormap
 from sigma.src.utils import k_factors_120kV
@@ -45,7 +45,7 @@ class PixelSegmenter(object):
         self.width = self.dataset_norm.shape[1]
 
         # Set spectra and nav_img signal to the corresponding ones
-        if type(dataset) != IMAGEDataset:
+        if type(dataset) not in [IMAGEDataset, PIXLDataset]:
             if self.dataset.spectra_bin is not None:
                 self.spectra = self.dataset.spectra_bin
             else:
@@ -236,7 +236,7 @@ class PixelSegmenter(object):
         x_y = np.concatenate([x_id, y_id], axis=1)
         x_y_indices = tuple(map(tuple, x_y))
 
-        if type(self.dataset) != IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset,PIXLDataset]:
             total_spectra_profiles = list()
             for x_y_index in x_y_indices:
                 total_spectra_profiles.append(self.spectra.data[x_y_index].reshape(1, -1))
@@ -686,7 +686,7 @@ class PixelSegmenter(object):
         axs[1].set_xticklabels(self.dataset.feature_list, fontsize=8)
         axs[1].set_title("Mean value for cluster " + str(cluster_num))
 
-        if type(self.dataset)!=IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
 
             sum_spectrum = self.dataset.spectra_bin if self.dataset.spectra_bin else self.dataset.spectra
             intensity_sum = sum_spectrum.sum().data / sum_spectrum.sum().data.max()
@@ -778,7 +778,7 @@ class PixelSegmenter(object):
 
     def plot_phase_map(self, cmap=None, alpha_cluster_map=0.75):
         cmap = self.color_palette if cmap is None else cmap
-        if type(self.dataset)!=IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
             img = self.nav_img.data 
         else:
             img = resize(self.dataset.intensity_map, self.dataset.chemical_maps.shape[:2])
@@ -825,7 +825,7 @@ class PixelSegmenter(object):
             cluster_num, use_label=False
         )
 
-        if type(self.dataset) != IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
             ncols, figsize, gridspec_kw = 3, (13, 3), {"width_ratios": [1, 1, 2]}
         else:
             ncols, figsize, gridspec_kw = 2, (6,3), None
@@ -854,7 +854,7 @@ class PixelSegmenter(object):
         axs[0].axis("off")
         axs[0].set_aspect("equal", "box")
 
-        if type(self.dataset)!=IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
             nav_img = self.dataset.nav_img_bin.data if self.dataset.nav_img_bin else self.dataset.nav_img.data
         else:
             if self.dataset.intensity_map.shape[:2]!= self.dataset.chemical_maps.shape[:2]: # if size of intensity map is different from chemical maps
@@ -869,7 +869,7 @@ class PixelSegmenter(object):
         axs[1].axis("off")
         axs[1].set_title("Navigation Sigmal + Binary Map", fontsize=10)
 
-        if type(self.dataset)!=IMAGEDataset:
+        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
             if normalisation:
                 intensity = (
                     spectra_profile["intensity"].to_numpy() / spectra_profile["intensity"].max()

@@ -9,6 +9,8 @@ tutorial/EDX3.bcf
 tutorial/test_data/
 *.emd
 tutorial/map01_15kV_30um_ss4_13mm_13min.bcf
+tutorial/Dourbes_1.hspy
+tutorial/Dourbes_2.hspy
 
 # Compiled source #
 ###################

@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import hyperspy.api as hs
 
 from typing import Union, Tuple, List
 from pathlib import Path
@@ -78,3 +79,16 @@ class IMAGEDataset(object):
             self.normalised_elemental_data = norm_process(
                 self.normalised_elemental_data
             )
+
+class PIXLDataset(IMAGEDataset):
+    def __init__(self, file_path: Union[str, Path]):
+        self.base_dataset = hs.load(file_path)
+        self.chemical_maps = self.base_dataset.data.astype(np.float32)
+        self.intensity_map = self.base_dataset.data.sum(axis=2).astype(np.float32)
+        self.intensity_map = self.intensity_map / self.intensity_map.max()
+        
+        self.chemical_maps_bin = None
+        self.intensity_map_bin = None
+        
+        self.feature_list = self.base_dataset.metadata.Signal.phases
+        self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}

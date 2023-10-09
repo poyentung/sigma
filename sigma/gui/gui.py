@@ -1,6 +1,6 @@
 from sigma.utils import visualisation as visual
 from sigma.src.segmentation import PixelSegmenter
-from sigma.utils.load import SEMDataset, IMAGEDataset
+from sigma.utils.load import SEMDataset, IMAGEDataset, PIXLDataset
 from sigma.utils.loadtem import TEMDataset
 from sigma.src.utils import k_factors_120kV
 
@@ -617,7 +617,7 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
     x_id = x_id.ravel().reshape(-1, 1)
     y_id = y_id.ravel().reshape(-1, 1)
 
-    if type(ps.dataset) != IMAGEDataset:
+    if type(ps.dataset) not in [IMAGEDataset, PIXLDataset]:
         z_id = (ps.nav_img.data / ps.nav_img.data.max()).reshape(-1, 1)
     else:
         intensity_map = resize(ps.dataset.intensity_map, ps.dataset.chemical_maps.shape[:2])

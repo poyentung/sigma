@@ -1,4 +1,4 @@
-from sigma.utils.load import SEMDataset, IMAGEDataset
+from sigma.utils.load import SEMDataset, IMAGEDataset, PIXLDataset
 from sigma.utils.loadtem import TEMDataset
 
 import hyperspy.api as hs
@@ -195,7 +195,7 @@ def plot_pixel_distributions(
 ):
     idx = dataset.feature_dict[peak]
     sns.set_style("ticks")
-    if type(dataset)!=IMAGEDataset:
+    if type(dataset) not in [IMAGEDataset, PIXLDataset]:
         normalised_elemental_data = dataset.get_feature_maps()  
     else:
         normalised_elemental_data = dataset.chemical_maps
