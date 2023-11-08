@@ -928,7 +928,25 @@ def show_unmixed_weights_and_compoments(
     def dropdown_cluster_eventhandler(change):
         plots_output_cpnt.clear_output()
         with plots_output_cpnt:
-            visual.plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
+            if type(ps.dataset) in [IMAGEDataset, PIXLDataset]:
+                fig, axs = plt.subplots(1,1)
+                axs.bar(
+                    ps.dataset.feature_list,
+                    components[change.new],
+                    width=0.6,
+                    linewidth=1,
+                )
+                for i in range(len(ps.dataset.feature_list)):
+                    y = components[change.new][i] + components[change.new].max()*0.03
+                    axs.text(i-len(ps.dataset.feature_list[i])*0.11,y,ps.dataset.feature_list[i], fontsize=8)
+                    
+                axs.set_ylim(None, components[change.new].max()*1.2)
+                axs.set_xticks([])
+                axs.set_xticklabels([])
+                axs.set_title(f"{change.new}")
+                plt.show()
+            else:
+                visual.plot_profile(ps.energy_axis, components[change.new], ps.peak_list)
 
     dropdown_cluster.observe(dropdown_cluster_eventhandler, names="value")
 

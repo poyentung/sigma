@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
-__version__ = "0.2.0"
+__version__ = "0.2.1"
     
 setup(
     name='emsigma',

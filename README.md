@@ -7,7 +7,7 @@
 **Try your dataset on SIGMA with Colab in the cloud:** 
 | Type of data  | Support format | Colab link    
  :---: | :---: | :---:
-| SEM | `.bcf`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| SEM | `.bcf` `.hspy` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
 | TEM | `.emi`/`.ser` `.emd`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_tem_emi_emd.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
 | Images | `.tif` `.png` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_image.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
 

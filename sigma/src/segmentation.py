@@ -682,12 +682,83 @@ class PixelSegmenter(object):
                     cluster_num * (self.n_components - 1) ** -1
                 ),
             )
+            
+        for i in range(len(self.dataset.feature_list)):
+            y = self.mu[cluster_num][i]+self.mu[cluster_num].max()*0.03 if self.mu[cluster_num][i]>0 else self.mu[cluster_num][i]-self.mu[cluster_num].max()*0.08
+            axs[1].text(i-len(self.dataset.feature_list[i])*0.11,y,self.dataset.feature_list[i], fontsize=8)
+            
+        axs[1].set_xticks([])
+        axs[1].set_xticklabels([])
+        # axs[1].set_xticklabels(self.dataset.feature_list, fontsize=8)
+        
+        for axis in ['top','right']:
+            axs[1].spines[axis].set_linewidth(0)
+        
+        if (self.mu[cluster_num]<0).any():
+            axs[1].set_ylim(self.mu[cluster_num].min()*1.2, self.mu[cluster_num].max()*1.2)
+            axs[1].spines['bottom'].set_position(('data',0.0))
+        else:
+            axs[1].set_ylim(None, self.mu[cluster_num].max()*1.2)
+            
+        axs[1].set_title("Mean feature value for cluster " + str(cluster_num))
 
-        axs[1].set_xticklabels(self.dataset.feature_list, fontsize=8)
-        axs[1].set_title("Mean value for cluster " + str(cluster_num))
+        
+        if type(self.dataset) in [IMAGEDataset, PIXLDataset]:
+            avg_intensity = self.dataset.base_dataset.data.mean(axis=(0,1)).astype(np.float32)
+            _, num_pixels, spectra_profile = self.get_binary_map_spectra_profile(cluster_num)
+            num_pixels = len(num_pixels[0])
+            mean_intensity = spectra_profile["intensity"].to_numpy(dtype=np.float32) / num_pixels
 
-        if type(self.dataset) not in [IMAGEDataset, PIXLDataset]:
+            # plot average signal of the entire dataset
+            axs[2].bar(
+                    self.dataset.feature_list,
+                    avg_intensity,
+                    width=0.7,
+                    facecolor='None',
+                    edgecolor=sns.color_palette()[0],
+                    linestyle="dotted",
+                    linewidth=1,
+                    zorder=10,
+                    label="Avg. raw spectrum",
+                )
+            
+            if self.n_components <= 10:
+                axs[2].bar(
+                    self.dataset.feature_list,
+                    mean_intensity,
+                    width=0.6,
+                    linewidth=1,
+                    color=plt.cm.get_cmap(self.color_palette)(cluster_num * 0.1),
+                )
+            else:
+                axs[2].bar(
+                    self.dataset.feature_list,
+                    mean_intensity,
+                    width=0.6,
+                    linewidth=1,
+                    color=plt.cm.get_cmap(self.color_palette)(
+                        cluster_num * (self.n_components - 1) ** -1
+                    ),
+                )
 
+            for i in range(len(self.dataset.feature_list)):
+                y = mean_intensity[i] + mean_intensity.max()*0.03
+                y_avg = avg_intensity[i] + mean_intensity.max()*0.03
+                y = max(y,y_avg)
+                axs[2].text(i-len(self.dataset.feature_list[i])*0.11,y,self.dataset.feature_list[i], fontsize=8)
+                
+            axs[2].set_ylim(None, mean_intensity.max()*1.2)
+            axs[2].set_xticks([])
+            axs[2].set_xticklabels([])
+            # axs[2].set_xticklabels(self.dataset.feature_list, fontsize=8)
+            axs[2].set_title("Mean raw signal for cluster " + str(cluster_num))
+            
+            legend_properties = {"size": 8}
+            axs[2].legend(
+                loc="best", handletextpad=0.5, frameon=False, prop=legend_properties
+            )
+                
+        else:
             sum_spectrum = self.dataset.spectra_bin if self.dataset.spectra_bin else self.dataset.spectra
             intensity_sum = sum_spectrum.sum().data / sum_spectrum.sum().data.max()
 
@@ -1021,39 +1092,57 @@ class PixelSegmenter(object):
                         axs_sub = axs[row, col]
                     else:
                         axs_sub = axs[col]
-                    axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
-                    axs_sub.set_xlim(0, 8)
-                    axs_sub.set_ylim(None, components[cpnt].max() * 1.3)
-                    axs_sub.set_ylabel("Intensity")
-                    axs_sub.set_xlabel("Energy (keV)")
-                    axs_sub.set_title(f"cpnt_{cur_cpnt}")
 
-                    if np.array(self.energy_axis).min() <= 0.0:
-                        zero_energy_idx = np.where(
-                            np.array(self.energy_axis).round(2) == 0
-                        )[0][0]
-                    else:
-                        zero_energy_idx = 0
-                    intensity = components[cpnt].to_numpy()
-                    for el in peak_list:
-                        peak = intensity[zero_energy_idx:][
-                            int(self.peak_dict[el] * 100) + 1
-                        ]
-                        axs_sub.vlines(
-                            self.peak_dict[el],
-                            0,
-                            0.9 * peak,
+                    if type(self.dataset) in [IMAGEDataset, PIXLDataset]:
+                        axs_sub.bar(
+                            self.dataset.feature_list,
+                            components[cpnt],
+                            width=0.6,
                             linewidth=1,
-                            color="grey",
-                            linestyles="dashed",
                         )
-                        axs_sub.text(
-                            self.peak_dict[el] - 0.18,
-                            peak + (intensity.max() / 15),
-                            el,
-                            rotation="vertical",
-                            fontsize=8,
-                        )
+                        for i in range(len(self.dataset.feature_list)):
+                            y = components[cpnt][i] + components[cpnt].max()*0.03
+                            axs_sub.text(i-len(self.dataset.feature_list[i])*0.11,y,self.dataset.feature_list[i], fontsize=8)
+                            
+                        axs_sub.set_ylim(None, components[cpnt].max()*1.2)
+                        axs_sub.set_xticks([])
+                        axs_sub.set_xticklabels([])
+                        axs_sub.set_title(f"cpnt_{cur_cpnt}")
+                    
+                    else:
+                        axs_sub.plot(self.energy_axis, components[cpnt], linewidth=1)
+                        axs_sub.set_xlim(0, 8)
+                        axs_sub.set_ylim(None, components[cpnt].max() * 1.3)
+                        axs_sub.set_ylabel("Intensity")
+                        axs_sub.set_xlabel("Energy (keV)")
+                        axs_sub.set_title(f"cpnt_{cur_cpnt}")
+    
+                        if np.array(self.energy_axis).min() <= 0.0:
+                            zero_energy_idx = np.where(
+                                np.array(self.energy_axis).round(2) == 0
+                            )[0][0]
+                        else:
+                            zero_energy_idx = 0
+                        intensity = components[cpnt].to_numpy()
+                        for el in peak_list:
+                            peak = intensity[zero_energy_idx:][
+                                int(self.peak_dict[el] * 100) + 1
+                            ]
+                            axs_sub.vlines(
+                                self.peak_dict[el],
+                                0,
+                                0.9 * peak,
+                                linewidth=1,
+                                color="grey",
+                                linestyles="dashed",
+                            )
+                            axs_sub.text(
+                                self.peak_dict[el] - 0.18,
+                                peak + (intensity.max() / 15),
+                                el,
+                                rotation="vertical",
+                                fontsize=8,
+                            )
 
         fig.subplots_adjust(hspace=0.3, wspace=0.0)
         plt.tight_layout()

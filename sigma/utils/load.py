@@ -12,22 +12,38 @@ from hyperspy._signals.signal2d import Signal2D
 from .base import BaseDataset
 
 class SEMDataset(BaseDataset):
-    def __init__(self, file_path: Union[str, Path]):
+    def __init__(self, file_path: Union[str, Path], nag_file_path: Union[str, Path]=None):
         super().__init__(file_path)
-        for dataset in self.base_dataset:
-            if (self.nav_img is None) and (type(dataset) is Signal2D):
-                self.original_nav_img = dataset
-                self.nav_img = dataset  # load BSE data
-            elif (self.nav_img is not None) and (type(dataset) is Signal2D):
-                old_w, old_h = self.nav_img.data.shape
-                new_w, new_h = dataset.data.shape
-                if (new_w + new_h) < (old_w + old_h):
-                    self.original_nav_img = dataset
-                    self.nav_img = dataset
-            elif type(dataset) is EDSSEMSpectrum:
-                self.original_spectra = dataset
-                self.spectra = dataset  # load spectra data from bcf file
 
+        # for .bcf files:
+        if file_path.endswith('.bcf'):
+            for dataset in self.base_dataset:
+                if (self.nav_img is None) and (type(dataset) is Signal2D):
+                    self.original_nav_img = dataset
+                    self.nav_img = dataset  # load BSE data
+                elif (self.nav_img is not None) and (type(dataset) is Signal2D):
+                    old_w, old_h = self.nav_img.data.shape
+                    new_w, new_h = dataset.data.shape
+                    if (new_w + new_h) < (old_w + old_h):
+                        self.original_nav_img = dataset
+                        self.nav_img = dataset
+                elif type(dataset) is EDSSEMSpectrum:
+                    self.original_spectra = dataset
+                    self.spectra = dataset  # load spectra data from bcf file
+
+        # for .hspy files:
+        elif file_path.endswith('.hspy'):
+            if nag_file_path is not None:
+                assert nag_file_path.endswith('.hspy')
+                nav_img = hs.load(nag_file_path)
+            else:
+                nav_img = Signal2D(self.base_dataset.sum(axis=2).data).T
+            
+            self.original_nav_img = nav_img
+            self.nav_img = nav_img
+            self.original_spectra = self.base_dataset
+            self.spectra = self.base_dataset
+        
         self.spectra.change_dtype("float32")  # change spectra data from unit8 into float32
         
         # reserve a copy of the raw data for quantification
