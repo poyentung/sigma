@@ -618,9 +618,10 @@ def check_latent_space(ps: PixelSegmenter, ratio_to_be_shown=0.25, show_map=Fals
     y_id = y_id.ravel().reshape(-1, 1)
 
     if type(ps.dataset) not in [IMAGEDataset, PIXLDataset]:
-        z_id = (ps.nav_img.data / ps.nav_img.data.max()).reshape(-1, 1)
+        nav_img = ps.dataset.nav_img.data if ps.dataset.nav_img_bin is None else ps.dataset.nav_img_bin.data
+        z_id = (nav_img / nav_img.max()).reshape(-1, 1)
     else:
-        intensity_map = resize(ps.dataset.intensity_map, ps.dataset.chemical_maps.shape[:2])
+        intensity_map = ps.dataset.intensity_map if ps.dataset.intensity_map_bin is None else ps.dataset.intensity_map_bin 
         z_id = (intensity_map / intensity_map.max()).reshape(-1, 1)
 
     combined = np.concatenate(

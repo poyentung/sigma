@@ -4,12 +4,14 @@
 
 **(UPDATE v0.2.0)** SIGMA now supports [**UMAP**](https://umap-learn.readthedocs.io/en/latest/index.html#) for dimensionality reduction and [**HDBSCAN**](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.HDBSCAN.html) for clustering.
 
+
 **Try your dataset on SIGMA with Colab in the cloud:** 
 | Type of data  | Support format | Colab link    
  :---: | :---: | :---:
-| SEM | `.bcf` `.hspy` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_sem.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
-| TEM | `.emi`/`.ser` `.emd`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_tem_emi_emd.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
-| Images | `.tif` `.png` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/tutorial_colab_image.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| SEM | `.bcf` `.hspy` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/local/tutorial_sem_umap_hdbscan.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| TEM | `.emi`/`.ser` `.emd`| <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/local/tutorial_tem_emi_umap_hdbscan.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> |
+| Images | `.tif` `.png` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/local/tutorial_image_umap_hdbscan.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
+| **EXCITE conference practical** | `.hspy` | <a href="https://colab.research.google.com/github/poyentung/sigma/blob/master/tutorial/colab/EXCITE_practical.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>|
 
 This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No 101005611: [**The EXCITE Network**](https://excite-network.eu/). If analysis using SIGMA forms a part of published work please cite the [manuscript](https://doi.org/10.1029/2022GC010530).
 

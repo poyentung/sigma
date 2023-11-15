@@ -641,10 +641,7 @@ class PixelSegmenter(object):
             fig.savefig(save, bbox_inches="tight", pad_inches=0.01)
 
     def plot_single_cluster_distribution(self, cluster_num, spectra_range=(0, 8)):
-        if type(self.dataset) != IMAGEDataset:
-            ncols, figsize = 3, (13, 2.5)
-        else:
-            ncols, figsize = 2, (5+0.4*len(self.dataset.feature_list),2.5) 
+        ncols, figsize = 3, (13, 2.5)
         fig, axs = plt.subplots(nrows=1, ncols=ncols, figsize=figsize, dpi=120)
         fig.subplots_adjust(hspace=0.35, wspace=0.1)
 
@@ -704,7 +701,8 @@ class PixelSegmenter(object):
 
         
         if type(self.dataset) in [IMAGEDataset, PIXLDataset]:
-            avg_intensity = self.dataset.base_dataset.data.mean(axis=(0,1)).astype(np.float32)
+            chemical_maps = self.dataset.chemical_maps if self.dataset.chemical_maps_bin is None else self.dataset.chemical_maps_bin
+            avg_intensity = chemical_maps.mean(axis=(0,1)).astype(np.float32) 
             _, num_pixels, spectra_profile = self.get_binary_map_spectra_profile(cluster_num)
             num_pixels = len(num_pixels[0])
             mean_intensity = spectra_profile["intensity"].to_numpy(dtype=np.float32) / num_pixels
@@ -747,7 +745,7 @@ class PixelSegmenter(object):
                 y = max(y,y_avg)
                 axs[2].text(i-len(self.dataset.feature_list[i])*0.11,y,self.dataset.feature_list[i], fontsize=8)
                 
-            axs[2].set_ylim(None, mean_intensity.max()*1.2)
+            axs[2].set_ylim(None, max(mean_intensity.max(), avg_intensity.max())*1.2)
             axs[2].set_xticks([])
             axs[2].set_xticklabels([])
             # axs[2].set_xticklabels(self.dataset.feature_list, fontsize=8)

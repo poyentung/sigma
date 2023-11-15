@@ -58,18 +58,18 @@ class IMAGEDataset(object):
                  intensity_map_path: Union[str, Path]
                  ):
 
-        chemical_maps_paths = [join(chemical_maps_dir, f) for f in os.listdir(chemical_maps_dir)]
+        chemical_maps_paths = [join(chemical_maps_dir, f) for f in os.listdir(chemical_maps_dir) if not f.startswith('.')]
         chemical_maps = [Image.open(p) for p in chemical_maps_paths]
         chemical_maps = [ImageOps.grayscale(p) for p in chemical_maps]
         chemical_maps = [np.asarray(img) for img in chemical_maps]
 
         self.chemical_maps = np.stack(chemical_maps,axis=2).astype(np.float32)
-        self.intensity_map = np.asarray(Image.open(intensity_map_path)).astype(np.int32)
+        self.intensity_map = np.asarray(Image.open(intensity_map_path).convert('L')).astype(np.int32)
 
         self.chemical_maps_bin = None
         self.intensity_map_bin = None
         
-        self.feature_list = [f.split('.')[0] for f in os.listdir(chemical_maps_dir)]
+        self.feature_list = [f.split('.')[0] for f in os.listdir(chemical_maps_dir) if not f.startswith('.')]
         self.feature_dict = {el: i for (i, el) in enumerate(self.feature_list)}
         
     def set_feature_list(self, feature_list):
